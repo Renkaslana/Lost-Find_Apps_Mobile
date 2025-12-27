@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Lost & Found Icon - Professional Design -->
+    <!-- Main box representing item -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,28 L80,28 L80,60 L28,60 Z"
+        android:strokeWidth="3.5"
+        android:strokeColor="#1976D2"/>
+    
+    <!-- Search/Magnifying glass overlay - represents "finding" -->
+    <group
+        android:translateX="54"
+        android:translateY="44">
+        <!-- Circle part of magnifying glass -->
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="6"
+            android:pathData="M-10,-10 A10,10 0,0,1 0,0"/>
+        
+        <!-- Handle of magnifying glass -->
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="6"
+            android:pathData="M0,0 L7,7"/>
+    </group>
+    
+    <!-- Checkmark inside box - represents "found" -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#4CAF50"
+        android:strokeWidth="4"
+        android:pathData="M38,44 L46,52 L58,40"/>
+    
+    <!-- Detail lines in box (item details) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M35,52 L65,52"/>
+</vector>
