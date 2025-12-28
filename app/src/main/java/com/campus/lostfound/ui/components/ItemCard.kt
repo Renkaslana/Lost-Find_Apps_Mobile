@@ -1,8 +1,14 @@
 package com.campus.lostfound.ui.components
 
-import android.graphics.BitmapFactory
-import android.util.Base64
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -11,6 +17,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,14 +40,36 @@ import com.campus.lostfound.util.ImageConverter
 fun ItemCard(
     item: LostFoundItem,
     onContactClick: () -> Unit,
+    onCardClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    // Elevation animation saat pressed (2dp → 4dp)
+    val elevation by animateFloatAsState(
+        targetValue = if (isPressed) 4f else 2f,
+        animationSpec = tween(durationMillis = 150),
+        label = "elevation"
+    )
+    
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = { onCardClick?.invoke() }
+            )
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = elevation.dp)
     ) {
         Row(
             modifier = Modifier
@@ -56,8 +85,8 @@ fun ItemCard(
                     val bitmapResult = remember(item.imageUrl) {
                         runCatching {
                             val base64String = ImageConverter.extractBase64(item.imageUrl)
-                            val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
-                            BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                            val imageBytes = android.util.Base64.decode(base64String, android.util.Base64.DEFAULT)
+                            android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
                         }
                     }
                     
@@ -67,6 +96,7 @@ fun ItemCard(
                             contentDescription = item.itemName,
                             modifier = Modifier
                                 .size(100.dp)
+                                .aspectRatio(1f)
                                 .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop
                         )
@@ -78,6 +108,7 @@ fun ItemCard(
                         contentDescription = item.itemName,
                         modifier = Modifier
                             .size(100.dp)
+                            .aspectRatio(1f)
                             .clip(RoundedCornerShape(12.dp)),
                         contentScale = ContentScale.Crop
                     )
@@ -94,7 +125,7 @@ fun ItemCard(
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    // Badge
+                    // Badge - Konsisten dengan warna status
                     Surface(
                         color = if (item.type == ItemType.LOST) LostRedLight else FoundGreenLight,
                         shape = RoundedCornerShape(8.dp),
@@ -169,6 +200,7 @@ private fun ImagePlaceholder() {
     Box(
         modifier = Modifier
             .size(100.dp)
+            .aspectRatio(1f)
             .clip(RoundedCornerShape(12.dp)),
         contentAlignment = Alignment.Center
     ) {
@@ -176,13 +208,17 @@ private fun ImagePlaceholder() {
             color = MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.fillMaxSize()
         ) {
-            Icon(
-                imageVector = Icons.Default.Image,
-                contentDescription = "No image",
-                modifier = Modifier
-                    .size(48.dp)
-                    .align(Alignment.Center)
-            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Image,
+                    contentDescription = "No image",
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

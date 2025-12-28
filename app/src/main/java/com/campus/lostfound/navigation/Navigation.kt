@@ -1,12 +1,16 @@
 package com.campus.lostfound.navigation
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.campus.lostfound.ui.screen.*
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
@@ -14,23 +18,56 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
     object Add : Screen("add", "Tambah", Icons.Default.Add)
     object Activity : Screen("activity", "Aktivitas", Icons.Default.List)
     object Settings : Screen("settings", "Pengaturan", Icons.Default.Settings)
+    object Detail : Screen("detail/{itemId}", "Detail", Icons.Default.Info) {
+        fun createRoute(itemId: String) = "detail/$itemId"
+    }
+    object Notifications : Screen("notifications", "Notifikasi", Icons.Default.Notifications)
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun NavigationGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
         startDestination = Screen.Home.route
     ) {
-        composable(Screen.Home.route) {
+        composable(
+            route = Screen.Home.route,
+            enterTransition = {
+                fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(300))
+            }
+        ) {
             HomeScreen(
                 onNavigateToAdd = {
                     navController.navigate(Screen.Add.route)
+                },
+                onNavigateToNotifications = {
+                    navController.navigate(Screen.Notifications.route)
+                },
+                onNavigateToDetail = { itemId ->
+                    navController.navigate(Screen.Detail.createRoute(itemId))
                 }
             )
         }
         
-        composable(Screen.Add.route) {
+        composable(
+            route = Screen.Add.route,
+            enterTransition = {
+                slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(300)
+                ) + fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(300)
+                ) + fadeOut(animationSpec = tween(300))
+            }
+        ) {
             AddReportScreen(
                 onNavigateBack = {
                     navController.popBackStack()
@@ -38,12 +75,78 @@ fun NavigationGraph(navController: NavHostController) {
             )
         }
         
-        composable(Screen.Activity.route) {
+        composable(
+            route = Screen.Activity.route,
+            enterTransition = {
+                fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(300))
+            }
+        ) {
             ActivityScreen()
         }
         
-        composable(Screen.Settings.route) {
+        composable(
+            route = Screen.Settings.route,
+            enterTransition = {
+                fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(300))
+            }
+        ) {
             SettingsScreen()
+        }
+        
+        composable(
+            route = Screen.Detail.route,
+            arguments = listOf(
+                navArgument("itemId") { type = NavType.StringType }
+            ),
+            enterTransition = {
+                slideInVertically(
+                    initialOffsetY = { it / 2 },
+                    animationSpec = tween(300)
+                ) + fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { it / 2 },
+                    animationSpec = tween(300)
+                ) + fadeOut(animationSpec = tween(300))
+            }
+        ) { backStackEntry ->
+            val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
+            DetailScreen(
+                itemId = itemId,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToEdit = { id ->
+                    // TODO: Navigate to edit screen if needed
+                    navController.popBackStack()
+                }
+            )
+        }
+        
+        composable(
+            route = Screen.Notifications.route,
+            enterTransition = {
+                fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(300))
+            }
+        ) {
+            NotificationScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToDetail = { itemId ->
+                    navController.navigate(Screen.Detail.createRoute(itemId))
+                }
+            )
         }
     }
 }

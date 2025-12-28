@@ -1,14 +1,21 @@
 package com.campus.lostfound.ui.screen
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -20,12 +27,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.campus.lostfound.data.model.ItemType
 import com.campus.lostfound.ui.components.ItemCard
 import com.campus.lostfound.ui.viewmodel.HomeViewModel
+import com.campus.lostfound.ui.viewmodel.NotificationViewModel
 import com.campus.lostfound.util.WhatsAppUtil
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToAdd: () -> Unit
+    onNavigateToAdd: () -> Unit,
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToDetail: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val viewModel: HomeViewModel = viewModel(
@@ -40,7 +54,9 @@ fun HomeScreen(
     HomeScreenContent(
         context = context,
         viewModel = viewModel,
-        onNavigateToAdd = onNavigateToAdd
+        onNavigateToAdd = onNavigateToAdd,
+        onNavigateToNotifications = onNavigateToNotifications,
+        onNavigateToDetail = onNavigateToDetail
     )
 }
 
@@ -48,97 +64,223 @@ fun HomeScreen(
 private fun HomeScreenContent(
     context: android.content.Context,
     viewModel: HomeViewModel,
-    onNavigateToAdd: () -> Unit
+    onNavigateToAdd: () -> Unit,
+    onNavigateToNotifications: () -> Unit,
+    onNavigateToDetail: ((String) -> Unit)? = null
 ) {
     val items by viewModel.filteredItems.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedFilter by viewModel.selectedFilter.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     
+    // Notification ViewModel untuk unread count
+    val notificationViewModel: NotificationViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return NotificationViewModel(context) as T
+            }
+        }
+    )
+    val notifications by notificationViewModel.notifications.collectAsStateWithLifecycle()
+    val unreadCount = notifications.count { !it.read }
+    val hasUnreadNotifications = unreadCount > 0
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = 80.dp)
     ) {
-        // Header
-        Column(
+        // Modern Header with Gradient Background
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        )
+                    )
+                )
         ) {
-            Text(
-                text = "Laporan Terbaru di Kampus",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "Temukan atau laporkan barang hilang",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Top Bar with Title and Notification Icon
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Laporan Terbaru di Kampus",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Text(
+                            text = "Temukan atau laporkan barang hilang",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                        )
+                    }
+                    
+                    // Notification Icon - TANPA background, hanya ripple
+                    Box {
+                        IconButton(
+                            onClick = { onNavigateToNotifications() },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Notifications,
+                                contentDescription = "Notifikasi",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        
+                        // Badge dot jika ada notifikasi baru
+                        if (hasUnreadNotifications) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .size(12.dp)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.error,
+                                        shape = CircleShape
+                                    )
+                                    .border(
+                                        width = 2.dp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        shape = CircleShape
+                                    )
+                            )
+                        }
+                    }
+                }
+                
+                // Modern Search Bar
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setSearchQuery(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(4.dp, MaterialTheme.shapes.large),
+                    placeholder = { 
+                        Text(
+                            "Cari barang (tas, HP, kunci…)",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search, 
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                        disabledIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
+                    )
+                )
+            }
         }
         
-        // Search Bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { viewModel.setSearchQuery(it) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            placeholder = { Text("Cari barang (tas, HP, kunci…)") },
-            leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = "Search")
-            },
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface
-            )
-        )
+        Spacer(modifier = Modifier.height(8.dp))
         
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        // Filter Chips
+        // Modern Filter Chips
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            SuggestionChip(
-                onClick = { viewModel.setFilter(null) },
-                label = { Text("Semua") },
-                colors = if (selectedFilter == null) {
-                    SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+            FilterChip(
+                selected = selectedFilter == null,
+                onClick = { 
+                    viewModel.setFilter(null) 
+                },
+                label = { 
+                    Text(
+                        "Semua",
+                        fontWeight = if (selectedFilter == null) FontWeight.Bold else FontWeight.Normal
                     )
-                } else {
-                    SuggestionChipDefaults.suggestionChipColors()
-                }
+                },
+                leadingIcon = if (selectedFilter == null) {
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                } else null,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
-            SuggestionChip(
-                onClick = { viewModel.setFilter(ItemType.LOST) },
-                label = { Text("Hilang") },
-                colors = if (selectedFilter == ItemType.LOST) {
-                    SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+            
+            FilterChip(
+                selected = selectedFilter == ItemType.LOST,
+                onClick = { 
+                    viewModel.setFilter(ItemType.LOST) 
+                },
+                label = { 
+                    Text(
+                        "Hilang",
+                        fontWeight = if (selectedFilter == ItemType.LOST) FontWeight.Bold else FontWeight.Normal
                     )
-                } else {
-                    SuggestionChipDefaults.suggestionChipColors()
-                }
+                },
+                leadingIcon = if (selectedFilter == ItemType.LOST) {
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                } else null,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.error,
+                    selectedLabelColor = MaterialTheme.colorScheme.onError
+                )
             )
-            SuggestionChip(
-                onClick = { viewModel.setFilter(ItemType.FOUND) },
-                label = { Text("Ditemukan") },
-                colors = if (selectedFilter == ItemType.FOUND) {
-                    SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+            
+            FilterChip(
+                selected = selectedFilter == ItemType.FOUND,
+                onClick = { 
+                    viewModel.setFilter(ItemType.FOUND) 
+                },
+                label = { 
+                    Text(
+                        "Ditemukan",
+                        fontWeight = if (selectedFilter == ItemType.FOUND) FontWeight.Bold else FontWeight.Normal
                     )
-                } else {
-                    SuggestionChipDefaults.suggestionChipColors()
-                }
+                },
+                leadingIcon = if (selectedFilter == ItemType.FOUND) {
+                    {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                } else null,
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = com.campus.lostfound.ui.theme.FoundGreen,
+                    selectedLabelColor = androidx.compose.ui.graphics.Color.White
+                )
             )
         }
         
@@ -178,21 +320,34 @@ private fun HomeScreenContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
-                items(items) { item ->
-                    ItemCard(
-                        item = item,
-                        onContactClick = {
-                            WhatsAppUtil.openWhatsApp(
-                                context = context,
-                                phoneNumber = item.whatsappNumber,
-                                itemName = item.itemName,
-                                type = if (item.type == ItemType.LOST) "barang hilang" else "barang ditemukan"
-                            )
-                        }
-                    )
+                itemsIndexed(items) { index, item ->
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(animationSpec = tween(300, delayMillis = index * 50)) +
+                                slideInVertically(
+                                    initialOffsetY = { it / 2 },
+                                    animationSpec = tween(300, delayMillis = index * 50)
+                                )
+                    ) {
+                        ItemCard(
+                            item = item,
+                            onContactClick = {
+                                WhatsAppUtil.openWhatsApp(
+                                    context = context,
+                                    phoneNumber = item.whatsappNumber,
+                                    itemName = item.itemName,
+                                    type = if (item.type == ItemType.LOST) "barang hilang" else "barang ditemukan"
+                                )
+                            },
+                            onCardClick = {
+                                onNavigateToDetail?.invoke(item.id)
+                            }
+                        )
+                    }
                 }
             }
         }
     }
+    
 }
 

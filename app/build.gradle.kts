@@ -53,6 +53,7 @@ android {
 dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.2")
     
@@ -78,6 +79,8 @@ dependencies {
     // Firebase Storage tidak diperlukan - menggunakan Base64 encoding
     // implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-auth")
+    // Firebase Cloud Messaging
+    implementation("com.google.firebase:firebase-messaging-ktx:23.3.0")
     
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.5.0")

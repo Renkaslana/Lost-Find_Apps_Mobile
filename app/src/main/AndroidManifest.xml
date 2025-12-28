@@ -17,15 +17,34 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CampusLostFound"
         tools:targetApi="31">
+        
+        <!-- Splash Screen as Launcher -->
         <activity
-            android:name=".MainActivity"
+            android:name=".SplashActivity"
             android:exported="true"
-            android:theme="@style/Theme.CampusLostFound">
+            android:theme="@style/Theme.CampusLostFound"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <!-- Main Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.CampusLostFound">
+        </activity>
+        
+        <!-- Firebase Messaging Service -->
+        <service
+            android:name=".MyFirebaseService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         
         <provider
             android:name="androidx.core.content.FileProvider"

@@ -17,6 +17,9 @@ class ActivityViewModel(
     
     private val _myReports = MutableStateFlow<List<LostFoundItem>>(emptyList())
     val myReports: StateFlow<List<LostFoundItem>> = _myReports.asStateFlow()
+
+    private val _history = MutableStateFlow<List<LostFoundItem>>(emptyList())
+    val history: StateFlow<List<LostFoundItem>> = _history.asStateFlow()
     
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -26,6 +29,7 @@ class ActivityViewModel(
     
     init {
         loadMyReports()
+        loadMyHistory()
     }
     
     fun loadMyReports() {
@@ -35,6 +39,15 @@ class ActivityViewModel(
             repository.getUserItems(userId).collect { items ->
                 _myReports.value = items
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun loadMyHistory() {
+        viewModelScope.launch {
+            val userId = repository.getCurrentUserId()
+            repository.getUserHistory(userId).collect { items ->
+                _history.value = items
             }
         }
     }

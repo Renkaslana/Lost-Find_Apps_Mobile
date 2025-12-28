@@ -3,8 +3,12 @@ package com.campus.lostfound.ui.screen
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -51,12 +55,14 @@ fun ActivityScreen() {
     ActivityScreenContent(context = context, viewModel = viewModel)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActivityScreenContent(
     context: android.content.Context,
     viewModel: ActivityViewModel
 ) {
     val myReports by viewModel.myReports.collectAsStateWithLifecycle()
+    val myHistory by viewModel.history.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
     
@@ -64,12 +70,13 @@ private fun ActivityScreenContent(
     var showCompleteDialog by remember { mutableStateOf<LostFoundItem?>(null) }
     var showEditDialog by remember { mutableStateOf<LostFoundItem?>(null) }
     
+    var selectedTab by remember { mutableStateOf(0) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(bottom = 80.dp)
     ) {
-        // Header
+        // Header + Tabs
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -86,6 +93,21 @@ private fun ActivityScreenContent(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(modifier = Modifier.height(8.dp))
+            // Single screen with toggle filter: Aktif / Riwayat
+            var showHistory by remember { mutableStateOf(false) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !showHistory,
+                    onClick = { showHistory = false },
+                    label = { Text("Aktif") }
+                )
+                FilterChip(
+                    selected = showHistory,
+                    onClick = { showHistory = true },
+                    label = { Text("Riwayat") }
+                )
+            }
         }
         
         // Error Message
@@ -107,147 +129,263 @@ private fun ActivityScreenContent(
         }
         
         // Content
-        if (isLoading && myReports.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+        val currentList = if (showHistory) myHistory else myReports
+        when {
+            isLoading && currentList.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
             }
-        } else if (myReports.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Description,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Belum ada laporan",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Buat laporan pertama Anda",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
-            ) {
-                items(myReports) { item ->
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            currentList.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Item Info
-                            ItemCard(
-                                item = item,
-                                onContactClick = {
-                                    WhatsAppUtil.openWhatsApp(
-                                        context = context,
-                                        phoneNumber = item.whatsappNumber,
-                                        itemName = item.itemName,
-                                        type = if (item.type == com.campus.lostfound.data.model.ItemType.LOST) "barang hilang" else "barang ditemukan"
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth()
+                            Icon(
+                                if (showHistory) Icons.Default.History else Icons.Default.Description,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            
-                            Divider()
-                            
-                            // Action Buttons
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Text(
+                                text = if (showHistory) "Belum ada riwayat" else "Belum ada laporan",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = if (showHistory) "Laporan yang selesai akan muncul di sini" else "Buat laporan pertama Anda",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            else -> {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    itemsIndexed(currentList) { index, item ->
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(animationSpec = tween(300, delayMillis = index * 50)) +
+                                    slideInVertically(
+                                        initialOffsetY = { it / 2 },
+                                        animationSpec = tween(300, delayMillis = index * 50)
+                                    )
+                        ) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
                             ) {
-                                OutlinedButton(
-                                    onClick = { showEditDialog = item },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !item.isCompleted
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
+                                    ItemCard(
+                                        item = item,
+                                        onContactClick = {
+                                            WhatsAppUtil.openWhatsApp(
+                                                context = context,
+                                                phoneNumber = item.whatsappNumber,
+                                                itemName = item.itemName,
+                                                type = if (item.type == com.campus.lostfound.data.model.ItemType.LOST) "barang hilang" else "barang ditemukan"
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
                                     )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Edit")
-                                }
-                                
-                                OutlinedButton(
-                                    onClick = { showCompleteDialog = item },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !item.isCompleted
-                                ) {
-                                    Icon(
-                                        Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Selesai")
-                                }
-                                
-                                OutlinedButton(
-                                    onClick = { showDeleteDialog = item },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.error
-                                    )
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Hapus")
+
+                                    Divider()
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { showEditDialog = item },
+                                            modifier = Modifier.weight(1f),
+                                            enabled = !item.isCompleted
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Edit,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Edit")
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = { showCompleteDialog = item },
+                                            modifier = Modifier.weight(1f),
+                                            enabled = !item.isCompleted
+                                        ) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Selesai")
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = { showDeleteDialog = item },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.outlinedButtonColors(
+                                                contentColor = MaterialTheme.colorScheme.error
+                                            )
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Delete,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Hapus")
+                                        }
+                                    }
+
+                                    if (item.isCompleted) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            shape = MaterialTheme.shapes.small,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.CheckCircle,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text(
+                                                    text = "Laporan ini telah ditandai selesai",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                            
-                            if (item.isCompleted) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    shape = MaterialTheme.shapes.small,
-                                    modifier = Modifier.fillMaxWidth()
+                        }
+                    }
+                }
+            }
+            }
+        } else {
+            // Riwayat tab
+            if (myHistory.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.History,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Belum ada riwayat",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Laporan yang selesai akan muncul di sini",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    itemsIndexed(myHistory) { index, item ->
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(animationSpec = tween(300, delayMillis = index * 50)) +
+                                    slideInVertically(
+                                        initialOffsetY = { it / 2 },
+                                        animationSpec = tween(300, delayMillis = index * 50)
+                                    )
+                        ) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                    ItemCard(
+                                        item = item,
+                                        onContactClick = {
+                                            WhatsAppUtil.openWhatsApp(
+                                                context = context,
+                                                phoneNumber = item.whatsappNumber,
+                                                itemName = item.itemName,
+                                                type = if (item.type == com.campus.lostfound.data.model.ItemType.LOST) "barang hilang" else "barang ditemukan"
+                                            )
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.primaryContainer,
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Icon(
-                                            Icons.Default.CheckCircle,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Laporan ini telah ditandai selesai",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Laporan ini telah diselesaikan",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -258,61 +396,115 @@ private fun ActivityScreenContent(
         }
     }
     
-    // Delete Confirmation Dialog
+    // Delete Confirmation Bottom Sheet
     showDeleteDialog?.let { item ->
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Hapus Laporan?") },
-            text = {
-                Text("Apakah Anda yakin ingin menghapus laporan \"${item.itemName}\"? Tindakan ini tidak dapat dibatalkan.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteReport(item) {
-                            showDeleteDialog = null
-                        }
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Text(
+                    text = "Hapus Laporan?",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Apakah Anda yakin ingin menghapus laporan \"${item.itemName}\"? Tindakan ini tidak dapat dibatalkan.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Hapus")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Batal")
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = null },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Batal")
+                    }
+                    Button(
+                        onClick = {
+                            viewModel.deleteReport(item) {
+                                showDeleteDialog = null
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Hapus")
+                    }
                 }
             }
-        )
+        }
     }
     
-    // Complete Confirmation Dialog
+    // Complete Confirmation Bottom Sheet
     showCompleteDialog?.let { item ->
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showCompleteDialog = null },
-            title = { Text("Tandai Selesai?") },
-            text = {
-                Text("Apakah Anda yakin ingin menandai laporan \"${item.itemName}\" sebagai selesai?")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.markAsCompleted(item) {
-                            showCompleteDialog = null
-                        }
-                    }
+            containerColor = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Tandai Selesai?",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Apakah Anda yakin ingin menandai laporan \"${item.itemName}\" sebagai selesai?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Ya, Tandai Selesai")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCompleteDialog = null }) {
-                    Text("Batal")
+                    OutlinedButton(
+                        onClick = { showCompleteDialog = null },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Batal")
+                    }
+                    Button(
+                        onClick = {
+                            viewModel.markAsCompleted(item) {
+                                showCompleteDialog = null
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Ya, Tandai Selesai")
+                    }
                 }
             }
-        )
+        }
     }
     
     // Edit Dialog

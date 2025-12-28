@@ -1,201 +1,121 @@
-# Campus Lost & Found
+# Campus Lost & Found 🎓🔍
 
-Aplikasi Android modern untuk melaporkan dan menemukan barang hilang di kampus menggunakan Kotlin dan Jetpack Compose.
+Aplikasi Android modern untuk membantu mahasiswa kampus melaporkan dan menemukan barang hilang atau ditemukan.
 
-## 🚀 Fitur
+## ✨ Fitur Utama
 
-- ✅ **Laporkan Barang Hilang/Ditemukan** - Form lengkap dengan upload foto
-- ✅ **Pencarian Real-time** - Cari barang berdasarkan nama, lokasi, atau deskripsi
-- ✅ **Filter** - Filter berdasarkan jenis laporan (Hilang/Ditemukan)
-- ✅ **Hubungi via WhatsApp** - Langsung hubungi pelapor via WhatsApp
-- ✅ **Kelola Laporan** - Hapus atau tandai selesai laporan milik sendiri
-- ✅ **UI Modern** - Material 3 Design dengan dark mode support
-- ✅ **Real-time Updates** - Update otomatis menggunakan Firestore
+### 🚀 UI/UX Modern
+- **Splash Screen** dengan animasi logo profesional
+- **Bottom Navigation** dengan indikator aktif yang responsif
+- **Gradient Header** yang menarik di halaman Beranda
+- **Filter Chips** interaktif dengan animasi
+- **Card Design** konsisten dengan border radius 16dp
+
+### 🏠 Halaman Beranda
+- Header modern dengan gradient background
+- Search bar dengan shadow dan animasi focus
+- Icon notifikasi di header
+- Filter: Semua, Hilang, Ditemukan
+- List card laporan dengan gambar, badge status, dan tombol hubungi
+
+### ➕ Tambah Laporan
+- Form dengan icon di setiap input field
+- Upload foto dengan preview modern
+- Validasi nomor WhatsApp Indonesia
+- Helper text yang jelas
+- Tombol submit dengan loading indicator
+
+### 📋 Aktivitas Saya
+- Kelola laporan milik user
+- Tombol aksi: Edit, Tandai Selesai, Hapus
+- Card dengan visual berbeda untuk laporan user
+- Dialog konfirmasi sebelum hapus
+
+### 🔔 Notifikasi
+- Icon lonceng di header Beranda
+- Dialog notifikasi dengan empty state
+- Ready untuk implementasi push notification
+
+### ⚙️ Pengaturan
+- Section jelas: Tema, Notifikasi, Privasi, Tentang
+- Icon konsisten di setiap section
+- Toggle untuk notifikasi
+- Informasi privasi dan tentang aplikasi
+
+### 🎨 Konsistensi Desain
+- **Border Radius**: Card 16dp, Button 12dp, Input 12dp
+- **Warna Status**: 
+  - Hilang: Red (#EF5350 / #FFEBEE)
+  - Ditemukan: Green (#66BB6A / #E8F5E9)
+- **Font Hierarchy**: Bold untuk title, Regular untuk body
+- **Icon Style**: Material Icons dengan size konsisten
+- **Spacing**: 4dp, 8dp, 12dp, 16dp, 24dp
+
+### 🎭 Animasi & Transisi
+- Fade in/out antar halaman
+- Slide up untuk halaman tambah
+- Ripple effect pada button
+- Scale animation pada icon bottom navigation
+- Content size animation pada card
 
 ## 🛠️ Teknologi
 
-- **Kotlin** - Bahasa pemrograman utama
-- **Jetpack Compose** - UI modern declarative
-- **Material 3** - Design system terbaru
+- **Kotlin** - Bahasa pemrograman
+- **Jetpack Compose** - UI Framework modern
 - **Firebase Firestore** - Database real-time
-- **Firebase Storage** - Penyimpanan gambar
-- **Firebase Auth** - Autentikasi anonymous
-- **Coil** - Image loading library
+- **Firebase Auth** - Autentikasi anonim
+- **Coil** - Image loading
+- **Material 3** - Design system
 - **Navigation Compose** - Navigasi antar screen
+- **ViewModel** - State management
+- **Coroutines** - Async operations
 
-## 📋 Prasyarat
+## 📱 Screenshot
 
-- Android Studio Otter 2 / Koala atau lebih baru
-- Android SDK 24+ (minimum)
-- Android SDK 34 (target)
-- Kotlin 1.9.20+
-- Firebase project (untuk production)
+*(Tambahkan screenshot aplikasi Anda di sini)*
 
-## 🔧 Setup
+## 🎯 Target Pengguna
 
-### 1. Clone Repository
+Mahasiswa kampus yang ingin:
+- Melaporkan barang hilang
+- Melaporkan barang ditemukan
+- Mencari barang yang hilang
+- Membantu mengembalikan barang temuan
 
-```bash
-git clone <repository-url>
-cd Kampus_Lost&Found
-```
+## 🔒 Privasi
 
-### 2. Setup Firebase
+- Data bersifat anonim
+- Nomor WhatsApp hanya digunakan untuk komunikasi terkait laporan
+- Tidak ada pengumpulan data pribadi lainnya
 
-1. Buka [Firebase Console](https://console.firebase.google.com/)
-2. Buat project baru atau gunakan project yang sudah ada
-3. Tambahkan aplikasi Android dengan package name: `com.campus.lostfound`
-4. Download `google-services.json`
-5. Letakkan file tersebut di folder `app/`
+## 👨‍💻 Developer
 
-### 3. Konfigurasi Firestore
-
-Buka Firebase Console → Firestore Database:
-
-1. Buat database baru (mode production atau test)
-2. Tambahkan collection dengan nama `items`
-3. Atur security rules:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /items/{itemId} {
-      // Public read
-      allow read: if true;
-      
-      // Anyone can create
-      allow create: if request.auth != null;
-      
-      // Only owner can update/delete
-      allow update, delete: if request.auth != null && 
-        resource.data.userId == request.auth.uid;
-    }
-  }
-}
-```
-
-### 4. Konfigurasi Firebase Storage
-
-1. Buka Firebase Console → Storage
-2. Enable Storage jika belum
-3. Atur security rules:
-
-```javascript
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /items/{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-      allow delete: if request.auth != null;
-    }
-  }
-}
-```
-
-### 5. Build & Run
-
-1. Buka project di Android Studio
-2. Sync Gradle files
-3. Run aplikasi di device fisik atau emulator
-
-## 📱 Struktur Aplikasi
-
-### Bottom Navigation (4 Tab)
-
-1. **Beranda** - Lihat semua laporan terbaru
-2. **Tambah** - Buat laporan baru
-3. **Aktivitas** - Kelola laporan milik sendiri
-4. **Pengaturan** - Pengaturan aplikasi
-
-### Screen Details
-
-#### Beranda
-- Header dengan judul
-- Search bar untuk mencari barang
-- Filter chips (Semua, Hilang, Ditemukan)
-- List card laporan dengan:
-  - Thumbnail foto
-  - Badge status
-  - Nama barang
-  - Lokasi
-  - Waktu
-  - Tombol hubungi WhatsApp
-
-#### Tambah Laporan
-- Form bertahap dengan validasi
-- Pilih jenis laporan (Hilang/Ditemukan)
-- Input nama barang, kategori, lokasi
-- Upload foto (Kamera/Galeri)
-- Input nomor WhatsApp
-- Deskripsi opsional
-
-#### Aktivitas
-- List laporan milik user
-- Tombol "Tandai Selesai"
-- Tombol "Hapus" dengan konfirmasi
-- Status completed indicator
-
-#### Pengaturan
-- Tema (Ikuti sistem)
-- Notifikasi toggle
-- Informasi privasi
-- Tentang aplikasi
-
-## 🎨 Design System
-
-- **Primary Color**: Biru (#2196F3)
-- **Secondary Color**: Teal (#009688)
-- **Lost Badge**: Merah lembut (#EF5350)
-- **Found Badge**: Hijau (#66BB6A)
-- **Material 3**: Mengikuti Material Design 3 guidelines
-
-## 🔐 Keamanan
-
-- User authentication menggunakan Firebase Anonymous Auth
-- Setiap user memiliki anonymous ID
-- User hanya bisa menghapus laporan milik sendiri
-- Laporan bersifat public read untuk semua user
-- Nomor WhatsApp hanya digunakan untuk komunikasi
-
-## 📦 Build APK
-
-Untuk build APK release:
-
-```bash
-./gradlew assembleRelease
-```
-
-APK akan berada di: `app/build/outputs/apk/release/`
-
-## 🐛 Troubleshooting
-
-### Error: google-services.json tidak ditemukan
-- Pastikan file `google-services.json` ada di folder `app/`
-- Pastikan package name di Firebase Console sesuai dengan `applicationId` di `build.gradle.kts`
-
-### Error: Permission denied
-- Pastikan permission untuk Camera dan Storage sudah di-set di AndroidManifest.xml
-- Untuk Android 13+, pastikan permission runtime sudah di-handle
-
-### Error: Firestore connection failed
-- Pastikan Firestore sudah di-enable di Firebase Console
-- Pastikan security rules sudah di-set dengan benar
-- Pastikan device/emulator memiliki koneksi internet
-
-## 📝 Catatan
-
-- Aplikasi menggunakan anonymous authentication, jadi tidak perlu login
-- Data laporan tersimpan di Firestore dengan struktur yang sudah ditentukan
-- Gambar disimpan di Firebase Storage dengan path `items/{uuid}.jpg`
-- Aplikasi siap untuk production setelah setup Firebase lengkap
-
-## 👨‍💻 Pengembang
-
-Dibuat untuk project kampus dengan teknologi modern Android development.
+Tim Kampus - Aplikasi ini dibuat sebagai project kampus untuk membantu komunitas mahasiswa.
 
 ## 📄 Lisensi
 
-Project ini dibuat untuk keperluan akademik.
+Aplikasi ini dibuat untuk keperluan edukasi dan pengembangan portofolio.
 
+## 🚀 Cara Build
+
+1. Clone repository
+2. Buka dengan Android Studio
+3. Sync Gradle
+4. Setup Firebase (tambahkan google-services.json)
+5. Run aplikasi
+
+## 📝 Catatan Versi
+
+### Version 1.0.0 (Current)
+- ✅ Splash screen dengan animasi
+- ✅ Bottom navigation responsif
+- ✅ CRUD laporan lengkap
+- ✅ Upload gambar dengan preview
+- ✅ Integrasi WhatsApp
+- ✅ Filter dan search
+- ✅ UI/UX modern dan konsisten
+- ✅ Animasi dan transisi halus
+
+---
+
+**Made with ❤️ for Campus Community**

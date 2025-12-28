@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
 
 data class AddReportUiState(
     val itemType: ItemType = ItemType.LOST,
@@ -93,10 +95,10 @@ class AddReportViewModel(
         
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            
+
             // Format nomor ke format internasional sebelum disimpan
             val formattedNumber = WhatsAppUtil.formatPhoneNumber(_uiState.value.whatsappNumber)
-            
+
             val item = LostFoundItem(
                 type = _uiState.value.itemType,
                 itemName = _uiState.value.itemName,
@@ -105,9 +107,15 @@ class AddReportViewModel(
                 description = _uiState.value.description,
                 whatsappNumber = formattedNumber
             )
-            
-            val result = repository.addItem(item, _uiState.value.imageUri)
-            
+
+            Log.d("AddReportViewModel", "Submitting report. Current auth uid=${FirebaseAuth.getInstance().currentUser?.uid}")
+            val result = try {
+                repository.addItem(item, _uiState.value.imageUri)
+            } catch (ex: Exception) {
+                Log.e("AddReportViewModel", "addItem threw", ex)
+                Result.failure<String>(ex)
+            }
+
             result.fold(
                 onSuccess = {
                     _uiState.value = _uiState.value.copy(
@@ -117,6 +125,7 @@ class AddReportViewModel(
                     onSuccess()
                 },
                 onFailure = { error ->
+                    Log.e("AddReportViewModel", "addItem failed: ${error.message}", error)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         errorMessage = error.message ?: "Gagal mengirim laporan"

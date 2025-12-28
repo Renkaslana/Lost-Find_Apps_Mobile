@@ -17,17 +17,53 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryBlue,
-    secondary = Teal,
-    background = Color(0xFF121212),
-    surface = Color(0xFF1E1E1E)
+    primary = PrimaryBlueLight,
+    onPrimary = Color(0xFF000000),
+    primaryContainer = PrimaryBlueDark,
+    onPrimaryContainer = Color(0xFFFFFFFF),
+    secondary = TealLight,
+    onSecondary = Color(0xFF000000),
+    secondaryContainer = TealDark,
+    onSecondaryContainer = Color(0xFFFFFFFF),
+    tertiary = PrimaryCyan,
+    onTertiary = Color(0xFF000000),
+    error = LostRed,
+    onError = Color(0xFFFFFFFF),
+    errorContainer = LostRedDark,
+    onErrorContainer = Color(0xFFFFFFFF),
+    background = BackgroundDark,
+    onBackground = OnSurfaceDark,
+    surface = SurfaceDark,
+    onSurface = OnSurfaceDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = OnSurfaceVariantDark,
+    outline = Color(0xFF938F99),
+    outlineVariant = Color(0xFF49454F)
 )
 
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryBlue,
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = PrimaryBlueLight,
+    onPrimaryContainer = PrimaryBlueDark,
     secondary = Teal,
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = TealLight,
+    onSecondaryContainer = TealDark,
+    tertiary = PrimaryCyan,
+    onTertiary = Color(0xFFFFFFFF),
+    error = LostRed,
+    onError = Color(0xFFFFFFFF),
+    errorContainer = LostRedLight,
+    onErrorContainer = LostRedDark,
     background = BackgroundLight,
-    surface = SurfaceLight
+    onBackground = OnSurfaceLight,
+    surface = SurfaceLight,
+    onSurface = OnSurfaceLight,
+    surfaceVariant = Color(0xFFF7F2FA),
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = Color(0xFF79747E),
+    outlineVariant = Color(0xFFE7E0EC)
 )
 
 @Composable
