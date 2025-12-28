@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -78,7 +79,7 @@ fun DetailScreen(
                 title = { Text("Detail Laporan") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -105,7 +106,7 @@ fun DetailScreen(
                                 modifier = Modifier.weight(1f),
                                 enabled = !(item?.isCompleted ?: false)
                             ) {
-                                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Edit")
                             }
@@ -115,7 +116,7 @@ fun DetailScreen(
                                 modifier = Modifier.weight(1f),
                                 enabled = !(item?.isCompleted ?: false)
                             ) {
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Selesai")
                             }
@@ -127,7 +128,7 @@ fun DetailScreen(
                                     contentColor = MaterialTheme.colorScheme.error
                                 )
                             ) {
-                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Hapus")
                             }
@@ -149,7 +150,7 @@ fun DetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = item != null
                     ) {
-                        Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Filled.Phone, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Hubungi via WhatsApp", fontWeight = FontWeight.Bold)
                     }
@@ -178,7 +179,7 @@ fun DetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        Icons.Default.Error,
+                        Icons.Filled.Error,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
                         tint = MaterialTheme.colorScheme.error
@@ -279,23 +280,23 @@ fun DetailScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             InfoRow(
-                                icon = Icons.Default.Category,
+                                icon = Icons.Filled.Category,
                                 label = "Kategori",
                                 value = item!!.category.displayName
                             )
                             
-                            Divider()
+                            HorizontalDivider()
                             
                             InfoRow(
-                                icon = Icons.Default.LocationOn,
+                                icon = Icons.Filled.LocationOn,
                                 label = "Lokasi",
                                 value = item!!.location
                             )
                             
-                            Divider()
+                            HorizontalDivider()
                             
                             InfoRow(
-                                icon = Icons.Default.Schedule,
+                                icon = Icons.Filled.Schedule,
                                 label = "Waktu",
                                 value = item!!.getTimeAgo()
                             )
@@ -335,7 +336,7 @@ fun DetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.CheckCircle,
+                                    Icons.Filled.CheckCircle,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -450,7 +451,7 @@ private fun ImagePlaceholder(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            Icons.Default.Image,
+            Icons.Filled.Image,
             contentDescription = "No image",
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -500,7 +501,7 @@ class DetailViewModel(
     fun deleteItem(onSuccess: () -> Unit) {
         viewModelScope.launch {
             val currentItem = _item.value ?: return@launch
-            val result = repository.deleteItem(currentItem.id, currentItem.imageStoragePath)
+            val result = repository.deleteItem(currentItem.id)
             result.onSuccess {
                 onSuccess()
             }.onFailure { error ->

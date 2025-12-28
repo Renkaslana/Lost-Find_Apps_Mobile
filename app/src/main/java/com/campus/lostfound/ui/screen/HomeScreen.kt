@@ -7,9 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -136,7 +135,7 @@ private fun HomeScreenContent(
                             modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
-                                Icons.Default.Notifications,
+                                Icons.Filled.Notifications, 
                                 contentDescription = "Notifikasi",
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(24.dp)
@@ -178,7 +177,7 @@ private fun HomeScreenContent(
                     },
                     leadingIcon = {
                         Icon(
-                            Icons.Default.Search, 
+                            Icons.Filled.Search, 
                             contentDescription = "Search",
                             tint = MaterialTheme.colorScheme.primary
                         )
@@ -219,10 +218,10 @@ private fun HomeScreenContent(
                 leadingIcon = if (selectedFilter == null) {
                     {
                         Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
                     }
                 } else null,
                 colors = FilterChipDefaults.filterChipColors(
@@ -245,7 +244,7 @@ private fun HomeScreenContent(
                 leadingIcon = if (selectedFilter == ItemType.LOST) {
                     {
                         Icon(
-                            imageVector = Icons.Default.Check,
+                            imageVector = Icons.Filled.Check,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -271,7 +270,7 @@ private fun HomeScreenContent(
                 leadingIcon = if (selectedFilter == ItemType.FOUND) {
                     {
                         Icon(
-                            imageVector = Icons.Default.Check,
+                            imageVector = Icons.Filled.Check,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )

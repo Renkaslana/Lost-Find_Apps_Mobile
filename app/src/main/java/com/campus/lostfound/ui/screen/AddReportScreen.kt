@@ -243,46 +243,7 @@ fun AddReportScreen(
         }
     }
     
-    // Image Source Dialog
-    if (showImageSourceDialog) {
-        AlertDialog(
-            onDismissRequest = { showImageSourceDialog = false },
-            title = { Text("Pilih Sumber Foto") },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TextButton(
-                        onClick = {
-                            showImageSourceDialog = false
-                            imagePicker.pickFromGallery()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Photo, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Pilih dari Galeri")
-                    }
-                    TextButton(
-                        onClick = {
-                            showImageSourceDialog = false
-                            imagePicker.takePhoto()
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ambil Foto")
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showImageSourceDialog = false }) {
-                    Text("Batal")
-                }
-            }
-        )
-    }
+
 }
 
 // Step 1: Info Barang

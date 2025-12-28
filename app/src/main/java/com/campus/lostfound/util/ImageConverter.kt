@@ -13,30 +13,39 @@ object ImageConverter {
      * Convert image URI to Base64 string
      * Returns empty string if conversion fails
      */
-    suspend fun uriToBase64(imageUri: Uri, context: Context): String {
+    suspend fun uriToBase64(imageUri: Uri, context: Context, thresholdBytes: Int = 1_000_000, targetBytes: Int = 800_000): String {
         return try {
             val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
-            if (inputStream == null) {
-                return ""
-            }
-            
-            val bitmap = BitmapFactory.decodeStream(inputStream)
+            if (inputStream == null) return ""
+
+            val originalBytes = inputStream.readBytes()
             inputStream.close()
-            
-            if (bitmap == null) {
-                return ""
+
+            val mimeType = context.contentResolver.getType(imageUri) ?: "image/*"
+
+            // If already below threshold, return original bytes as Base64 (no recompression)
+            if (originalBytes.size <= thresholdBytes) {
+                val base64String = Base64.encodeToString(originalBytes, Base64.NO_WRAP)
+                return "data:$mimeType;base64,$base64String"
             }
-            
-            // Compress bitmap to reduce size (max ~500KB)
-            val compressedBitmap = compressBitmap(bitmap, maxSizeKB = 500)
-            
-            // Convert to Base64
-            val outputStream = ByteArrayOutputStream()
-            compressedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-            val byteArray = outputStream.toByteArray()
-            val base64String = Base64.encodeToString(byteArray, Base64.NO_WRAP)
-            
-            // Return as data URL format
+
+            // Otherwise decode bitmap and compress to target size
+            val bitmap = BitmapFactory.decodeByteArray(originalBytes, 0, originalBytes.size)
+            if (bitmap == null) return ""
+
+            var quality = 90
+            var baos = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos)
+            var bytes = baos.toByteArray()
+
+            while (bytes.size > targetBytes && quality > 20) {
+                quality -= 5
+                baos = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, baos)
+                bytes = baos.toByteArray()
+            }
+
+            val base64String = Base64.encodeToString(bytes, Base64.NO_WRAP)
             "data:image/jpeg;base64,$base64String"
         } catch (e: Exception) {
             ""
@@ -46,20 +55,20 @@ object ImageConverter {
     /**
      * Compress bitmap to target size
      */
+    // kept for backward compatibility but not used by uriToBase64 anymore
     private fun compressBitmap(bitmap: Bitmap, maxSizeKB: Int): Bitmap {
         var quality = 90
         var stream = ByteArrayOutputStream()
         bitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
         var sizeKB = stream.size() / 1024
-        
-        // Compress until size is acceptable
+
         while (sizeKB > maxSizeKB && quality > 30) {
             quality -= 10
             stream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
             sizeKB = stream.size() / 1024
         }
-        
+
         return bitmap
     }
     

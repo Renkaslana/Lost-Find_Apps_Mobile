@@ -5,6 +5,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,7 +72,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Icons.Default.Palette,
+                    Icons.Filled.Palette,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
@@ -124,7 +125,7 @@ fun SettingsScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        Icons.Default.Notifications,
+                        Icons.Filled.Notifications,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
@@ -177,7 +178,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.Top
             ) {
                 Icon(
-                    Icons.Default.Lock,
+                    Icons.Filled.Lock,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
@@ -226,7 +227,7 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.Top
             ) {
                 Icon(
-                    Icons.Default.Info,
+                    Icons.Filled.Info,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
@@ -245,7 +246,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Divider()
+                    HorizontalDivider()
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),

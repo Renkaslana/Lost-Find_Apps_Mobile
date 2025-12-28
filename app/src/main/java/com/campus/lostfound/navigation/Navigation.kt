@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavHostController
@@ -14,14 +15,14 @@ import androidx.navigation.navArgument
 import com.campus.lostfound.ui.screen.*
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    object Home : Screen("home", "Beranda", Icons.Default.Home)
-    object Add : Screen("add", "Tambah", Icons.Default.Add)
-    object Activity : Screen("activity", "Aktivitas", Icons.Default.List)
-    object Settings : Screen("settings", "Pengaturan", Icons.Default.Settings)
-    object Detail : Screen("detail/{itemId}", "Detail", Icons.Default.Info) {
+    object Home : Screen("home", "Beranda", Icons.Filled.Home)
+    object Add : Screen("add", "Tambah", Icons.Filled.Add)
+    object Activity : Screen("activity", "Aktivitas", Icons.Filled.List)
+    object Settings : Screen("settings", "Pengaturan", Icons.Filled.Settings)
+    object Detail : Screen("detail/{itemId}", "Detail", Icons.Filled.Info) {
         fun createRoute(itemId: String) = "detail/$itemId"
     }
-    object Notifications : Screen("notifications", "Notifikasi", Icons.Default.Notifications)
+    object Notifications : Screen("notifications", "Notifikasi", Icons.Filled.Notifications)
 }
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -123,7 +124,7 @@ fun NavigationGraph(navController: NavHostController) {
                 onNavigateBack = {
                     navController.popBackStack()
                 },
-                onNavigateToEdit = { id ->
+                onNavigateToEdit = { _ ->
                     // TODO: Navigate to edit screen if needed
                     navController.popBackStack()
                 }
