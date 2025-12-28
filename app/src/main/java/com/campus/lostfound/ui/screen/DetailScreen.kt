@@ -501,7 +501,7 @@ class DetailViewModel(
     fun deleteItem(onSuccess: () -> Unit) {
         viewModelScope.launch {
             val currentItem = _item.value ?: return@launch
-            val result = repository.deleteItem(currentItem.id)
+            val result = repository.deleteItem(currentItem.id, currentItem.imageStoragePath)
             result.onSuccess {
                 onSuccess()
             }.onFailure { error ->
