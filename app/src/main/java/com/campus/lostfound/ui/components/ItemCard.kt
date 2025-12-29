@@ -7,6 +7,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -58,7 +60,7 @@ fun ItemCard(
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null,
+                indication = rememberRipple(bounded = true),
                 onClick = { onCardClick?.invoke() }
             )
             .animateContentSize(
@@ -76,6 +78,15 @@ fun ItemCard(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Accent stripe to indicate Lost / Found
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (item.type == ItemType.LOST) LostRed else FoundGreen)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
             // Image
             if (item.imageUrl.isNotEmpty()) {
                 // Check if Base64 image or URL
@@ -174,11 +185,12 @@ fun ItemCard(
                 }
                 
                 // Contact Button
+                val contactColor = if (item.type == ItemType.LOST) MaterialTheme.colorScheme.primary else FoundGreen
                 Button(
                     onClick = onContactClick,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = contactColor
                     )
                 ) {
                     Icon(

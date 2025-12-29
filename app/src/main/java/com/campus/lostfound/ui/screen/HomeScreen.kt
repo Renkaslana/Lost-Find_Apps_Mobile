@@ -5,6 +5,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -85,11 +90,17 @@ private fun HomeScreenContent(
     val unreadCount = notifications.count { !it.read }
     val hasUnreadNotifications = unreadCount > 0
     
+    val listState = rememberLazyListState()
+    val headerCollapsed by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 50 }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
     ) {
         // Modern Header with Gradient Background
+        // Collapsible header
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -97,7 +108,7 @@ private fun HomeScreenContent(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
                         )
                     )
                 )
@@ -128,20 +139,27 @@ private fun HomeScreenContent(
                         )
                     }
                     
-                    // Notification Icon - TANPA background, hanya ripple
+                    // Notification Icon - animated on press
                     Box {
+                        val bellInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                        val bellPressed by bellInteraction.collectIsPressedAsState()
+                        val bellScale by animateFloatAsState(if (bellPressed) 0.9f else 1f)
+
                         IconButton(
                             onClick = { onNavigateToNotifications() },
-                            modifier = Modifier.size(48.dp)
+                            interactionSource = bellInteraction,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .scale(bellScale)
                         ) {
                             Icon(
-                                Icons.Filled.Notifications, 
+                                Icons.Filled.Notifications,
                                 contentDescription = "Notifikasi",
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-                        
+
                         // Badge dot jika ada notifikasi baru
                         if (hasUnreadNotifications) {
                             Box(
@@ -162,14 +180,17 @@ private fun HomeScreenContent(
                     }
                 }
                 
-                // Modern Search Bar
+                // Modern Search Bar with animated focus state
+                var searchFocused by remember { mutableStateOf(false) }
+                val searchElevation by animateFloatAsState(if (searchFocused) 8f else 2f)
+
                 TextField(
                     value = searchQuery,
                     onValueChange = { viewModel.setSearchQuery(it) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(4.dp, MaterialTheme.shapes.large),
-                    placeholder = { 
+                        .shadow(searchElevation.dp, MaterialTheme.shapes.large),
+                    placeholder = {
                         Text(
                             "Cari barang (tas, HP, kunci…)",
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -177,11 +198,18 @@ private fun HomeScreenContent(
                     },
                     leadingIcon = {
                         Icon(
-                            Icons.Filled.Search, 
+                            Icons.Filled.Search,
                             contentDescription = "Search",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     },
+                    trailingIcon = if (searchQuery.isNotBlank()) {
+                        {
+                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Clear")
+                            }
+                        }
+                    } else null,
                     singleLine = true,
                     shape = MaterialTheme.shapes.large,
                     colors = TextFieldDefaults.colors(
@@ -190,7 +218,8 @@ private fun HomeScreenContent(
                         focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                         unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                         disabledIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                    )
+                    ),
+                    interactionSource = remember { MutableInteractionSource() }
                 )
             }
         }
@@ -295,29 +324,37 @@ private fun HomeScreenContent(
             }
         } else if (items.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                        // Illustration composable (vector-like) for empty state
+                        com.campus.lostfound.ui.components.EmptyStateIllustration.EmptyStateHomeIllustration()
+
                     Text(
                         text = "Belum ada laporan",
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = "Jadilah yang pertama melaporkan",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
             }
         } else {
             LazyColumn(
+                state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                contentPadding = PaddingValues(bottom = 80.dp, top = 8.dp)
             ) {
                 itemsIndexed(items) { index, item ->
                     AnimatedVisibility(

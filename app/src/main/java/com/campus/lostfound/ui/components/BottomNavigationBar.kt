@@ -3,7 +3,7 @@ package com.campus.lostfound.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -59,12 +59,11 @@ fun BottomNavigationBar(
     )
     
     NavigationBar(
-        modifier = modifier.shadow(
-            elevation = 8.dp,
-            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(WindowInsets.navigationBars.asPaddingValues()),
         containerColor = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp
+        tonalElevation = 4.dp
     ) {
         items.forEach { item ->
             NavigationBarItemWithAnimation(
@@ -127,7 +126,7 @@ private fun RowScope.NavigationBarItemWithAnimation(
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = MaterialTheme.colorScheme.primary,
             selectedTextColor = MaterialTheme.colorScheme.primary,
-            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
         )

@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.*
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,10 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.colorResource
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -123,14 +127,29 @@ fun SplashScreenContent(onTimeout: () -> Unit) {
         onTimeout()
     }
     
+    val bgTop = colorResource(id = R.color.splash_opening_top)
+    val bgBottom = colorResource(id = R.color.splash_opening_bottom)
+
+    // subtle bobbing animation for the icon
+    val infinite = rememberInfiniteTransition()
+    val bobbing by infinite.animateFloat(
+        initialValue = -6f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1200, easing = LinearOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bobbing"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        PrimaryBlueDark, // Navy blue
-                        PrimaryBlue     // Modern blue
+                        bgTop,
+                        bgBottom
                     )
                 )
             )
@@ -142,15 +161,35 @@ fun SplashScreenContent(onTimeout: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(32.dp)
         ) {
-            // Logo with fade + scale animation
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_image),
-                contentDescription = "App Logo",
-                modifier = Modifier
-                    .size(120.dp)
-                    .scale(logoScale)
-                    .alpha(logoAlpha)
-            )
+                    // Logo with subtle glow, shadow, fade + scale animation (use splash_opening.png)
+                    Box(
+                        modifier = Modifier
+                            .size(160.dp)
+                            .graphicsLayer { translationY = bobbing },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // soft glow behind the icon
+                        Box(
+                            modifier = Modifier
+                                .size(140.dp)
+                                .background(
+                                    color = colorResource(id = R.color.splash_opening_accent).copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(28.dp)
+                                )
+                        )
+
+                        // actual icon with shadow, scale and alpha
+                        Image(
+                            painter = painterResource(id = R.drawable.splash_opening),
+                            contentDescription = "App Opening Icon",
+                            modifier = Modifier
+                                .size(120.dp)
+                                .scale(logoScale)
+                                .alpha(logoAlpha)
+                                .graphicsLayer { translationY = bobbing }
+                                .shadow(elevation = 10.dp, shape = RoundedCornerShape(28.dp))
+                        )
+                    }
             
             Spacer(modifier = Modifier.height(24.dp))
             
@@ -180,6 +219,40 @@ fun SplashScreenContent(onTimeout: () -> Unit) {
                     .graphicsLayer {
                         translationY = textOffsetY
                     }
+            )
+            Spacer(modifier = Modifier.height(18.dp))
+            ThreeDotLoader(
+                modifier = Modifier.alpha(if (startAnimation) 1f else 0f),
+                dotColor = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+fun ThreeDotLoader(modifier: Modifier = Modifier, dotColor: Color = Color.White) {
+    val infinite = rememberInfiniteTransition()
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (i in 0..2) {
+            val scale by infinite.animateFloat(
+                initialValue = 0.6f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 600, easing = LinearEasing, delayMillis = i * 150),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "dotScale$i"
+            )
+
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .scale(scale)
+                    .background(color = dotColor, shape = RoundedCornerShape(50))
             )
         }
     }

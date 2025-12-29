@@ -1,8 +1,6 @@
 package com.campus.lostfound.ui.screen
 
 import android.graphics.BitmapFactory
-import android.net.Uri
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -12,14 +10,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -44,7 +40,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewModelScope
-import kotlin.Result
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,17 +57,17 @@ fun DetailScreen(
             }
         }
     )
-    
+
     val item by viewModel.item.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isOwner by viewModel.isOwner.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
-    
+
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCompleteDialog by remember { mutableStateOf(false) }
-    
+
     val scrollState = rememberScrollState()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -85,7 +80,6 @@ fun DetailScreen(
             )
         },
         bottomBar = {
-            // Sticky CTA Button
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shadowElevation = 8.dp,
@@ -96,7 +90,6 @@ fun DetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (isOwner) {
-                        // Owner actions
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -110,7 +103,7 @@ fun DetailScreen(
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Edit")
                             }
-                            
+
                             OutlinedButton(
                                 onClick = { showCompleteDialog = true },
                                 modifier = Modifier.weight(1f),
@@ -120,7 +113,7 @@ fun DetailScreen(
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Selesai")
                             }
-                            
+
                             OutlinedButton(
                                 onClick = { showDeleteDialog = true },
                                 modifier = Modifier.weight(1f),
@@ -134,8 +127,7 @@ fun DetailScreen(
                             }
                         }
                     }
-                    
-                    // Contact Button
+
                     Button(
                         onClick = {
                             item?.let {
@@ -198,7 +190,6 @@ fun DetailScreen(
                     .padding(paddingValues)
                     .verticalScroll(scrollState)
             ) {
-                // Hero Image
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -213,7 +204,7 @@ fun DetailScreen(
                                     BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
                                 }
                             }
-                            
+
                             bitmapResult.getOrNull()?.let { bitmap ->
                                 Image(
                                     bitmap = bitmap.asImageBitmap(),
@@ -233,8 +224,7 @@ fun DetailScreen(
                     } else {
                         ImagePlaceholder(modifier = Modifier.fillMaxSize())
                     }
-                    
-                    // Badge Status di atas hero image
+
                     Surface(
                         color = if (item!!.type == ItemType.LOST) LostRedLight else FoundGreenLight,
                         shape = RoundedCornerShape(8.dp),
@@ -251,22 +241,19 @@ fun DetailScreen(
                         )
                     }
                 }
-                
-                // Content
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Item Name (Headline)
                     Text(
                         text = item!!.itemName,
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Bold
                     )
-                    
-                    // Info Grid
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -284,17 +271,17 @@ fun DetailScreen(
                                 label = "Kategori",
                                 value = item!!.category.displayName
                             )
-                            
+
                             HorizontalDivider()
-                            
+
                             InfoRow(
                                 icon = Icons.Filled.LocationOn,
                                 label = "Lokasi",
                                 value = item!!.location
                             )
-                            
+
                             HorizontalDivider()
-                            
+
                             InfoRow(
                                 icon = Icons.Filled.Schedule,
                                 label = "Waktu",
@@ -302,8 +289,7 @@ fun DetailScreen(
                             )
                         }
                     }
-                    
-                    // Description
+
                     if (item!!.description.isNotEmpty()) {
                         Column(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -320,8 +306,7 @@ fun DetailScreen(
                             )
                         }
                     }
-                    
-                    // Completed Status
+
                     if (item!!.isCompleted) {
                         Surface(
                             color = MaterialTheme.colorScheme.primaryContainer,
@@ -352,8 +337,7 @@ fun DetailScreen(
             }
         }
     }
-    
-    // Delete Confirmation Dialog
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
@@ -383,8 +367,7 @@ fun DetailScreen(
             }
         )
     }
-    
-    // Complete Confirmation Dialog
+
     if (showCompleteDialog) {
         AlertDialog(
             onDismissRequest = { showCompleteDialog = false },

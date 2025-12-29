@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -114,28 +115,23 @@ fun NotificationScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Notifications,
-                        contentDescription = null,
-                        modifier = Modifier.size(96.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                    Text(
-                        text = "Belum ada notifikasi",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Notifikasi akan muncul di sini saat ada aktivitas terkait laporan Anda",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 32.dp)
-                    )
-                }
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        com.campus.lostfound.ui.components.EmptyStateIllustration.EmptyStateNotificationIllustration()
+                        Text(
+                            text = "Belum ada notifikasi",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Notifikasi akan muncul di sini saat ada aktivitas terkait laporan Anda",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 32.dp)
+                        )
+                    }
             }
         } else {
             LazyColumn(
@@ -182,7 +178,7 @@ fun NotificationItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick, indication = rememberRipple(bounded = true), interactionSource = androidx.compose.foundation.interaction.MutableInteractionSource()),
         colors = CardDefaults.cardColors(
             containerColor = if (notification.read) {
                 MaterialTheme.colorScheme.surface
