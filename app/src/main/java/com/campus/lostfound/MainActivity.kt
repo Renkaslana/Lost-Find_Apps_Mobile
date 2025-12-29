@@ -59,20 +59,34 @@ fun MainScreen() {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: Screen.Home.route
     
+    // Only show bottom navigation on main app sections
+    val showBottomBar = when {
+        currentRoute == Screen.Home.route -> true
+        currentRoute == Screen.Add.route -> true
+        currentRoute == Screen.Activity.route -> true
+        currentRoute == Screen.Settings.route -> true
+        // detail has parameter like "detail/{itemId}", match prefix
+        currentRoute?.startsWith("detail") == true -> false
+        currentRoute == Screen.Notifications.route -> false
+        else -> false
+    }
+
     androidx.compose.material3.Scaffold(
         bottomBar = {
-            BottomNavigationBar(
-                currentRoute = currentRoute,
-                onNavigate = { route ->
-                    navController.navigate(route) {
-                        popUpTo(Screen.Home.route) {
-                            saveState = true
+            if (showBottomBar) {
+                BottomNavigationBar(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navController.navigate(route) {
+                            popUpTo(Screen.Home.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
-                }
-            )
+                )
+            }
         }
     ) { paddingValues ->
         Box(
