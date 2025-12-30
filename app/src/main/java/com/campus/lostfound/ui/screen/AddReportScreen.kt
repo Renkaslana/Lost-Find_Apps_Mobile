@@ -85,8 +85,8 @@ fun AddReportScreen(
                 LinearProgressIndicator(
                     progress = currentStep.toFloat() / totalSteps,
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    color = MaterialTheme.colorScheme.secondary,
+                    trackColor = MaterialTheme.colorScheme.surface
                 )
                 // Step Indicators
                 Row(
@@ -187,6 +187,11 @@ fun AddReportScreen(
                             }
                         },
                         modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        ),
+                        shape = RoundedCornerShape(28.dp),
                         enabled = when (currentStep) {
                             1 -> uiState.itemName.isNotBlank() && uiState.location.isNotBlank()
                             2 -> {
@@ -205,7 +210,7 @@ fun AddReportScreen(
                             if (uiState.isLoading) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    color = MaterialTheme.colorScheme.onSecondary,
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -225,7 +230,12 @@ fun AddReportScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = uiState.itemName.isNotBlank() && uiState.location.isNotBlank()
+                        enabled = uiState.itemName.isNotBlank() && uiState.location.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        ),
+                        shape = RoundedCornerShape(28.dp)
                     ) {
                         Text("Lanjut")
                         Spacer(modifier = Modifier.width(4.dp))

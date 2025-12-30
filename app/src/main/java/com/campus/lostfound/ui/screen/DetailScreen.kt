@@ -40,6 +40,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +51,7 @@ fun DetailScreen(
     onNavigateToEdit: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val viewModel: DetailViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -130,17 +133,26 @@ fun DetailScreen(
 
                     Button(
                         onClick = {
-                            item?.let {
-                                WhatsAppUtil.openWhatsApp(
-                                    context = context,
-                                    phoneNumber = it.whatsappNumber,
-                                    itemName = it.itemName,
-                                    type = if (it.type == ItemType.LOST) "barang hilang" else "barang ditemukan"
-                                )
+                            item?.let { currentItem ->
+                                scope.launch(Dispatchers.IO) {
+                                    WhatsAppUtil.openWhatsAppWithImage(
+                                        context = context,
+                                        phoneNumber = currentItem.whatsappNumber,
+                                        itemName = currentItem.itemName,
+                                        type = if (currentItem.type == ItemType.LOST) "barang hilang" else "barang ditemukan",
+                                        imageUrl = currentItem.imageUrl,
+                                        location = currentItem.location
+                                    )
+                                }
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = item != null
+                        enabled = item != null,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        ),
+                        shape = RoundedCornerShape(28.dp)
                     ) {
                         Icon(Icons.Filled.Phone, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
@@ -257,8 +269,9 @@ fun DetailScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Column(
                             modifier = Modifier
@@ -410,7 +423,7 @@ private fun InfoRow(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = MaterialTheme.colorScheme.secondary
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(

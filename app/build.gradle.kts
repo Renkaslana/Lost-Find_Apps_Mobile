@@ -86,6 +86,8 @@ dependencies {
     
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.5.0")
+    // DataStore Preferences for local settings persistence
+    implementation("androidx.datastore:datastore-preferences:1.1.0")
     
     // Date/Time
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")

@@ -23,6 +23,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
         fun createRoute(itemId: String) = "detail/$itemId"
     }
     object Notifications : Screen("notifications", "Notifikasi", Icons.Filled.Notifications)
+    object Explore : Screen("explore", "Jelajah", Icons.Filled.Explore) // New: Explore/Discovery screen
 }
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -98,6 +99,22 @@ fun NavigationGraph(navController: NavHostController) {
             }
         ) {
             SettingsScreen()
+        }
+        
+        composable(
+            route = Screen.Explore.route,
+            enterTransition = {
+                fadeIn(animationSpec = tween(300))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(300))
+            }
+        ) {
+            ExploreScreen(
+                onNavigateToDetail = { itemId ->
+                    navController.navigate(Screen.Detail.createRoute(itemId))
+                }
+            )
         }
         
         composable(

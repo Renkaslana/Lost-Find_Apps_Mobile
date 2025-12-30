@@ -9,7 +9,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
@@ -20,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,11 +35,12 @@ import com.campus.lostfound.data.model.ItemType
 import com.campus.lostfound.ui.components.ItemCard
 import com.campus.lostfound.ui.viewmodel.HomeViewModel
 import com.campus.lostfound.ui.viewmodel.NotificationViewModel
+import com.campus.lostfound.ui.theme.LostRed
+import com.campus.lostfound.ui.theme.FoundGreen
 import com.campus.lostfound.util.WhatsAppUtil
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.core.tween
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,8 +103,7 @@ private fun HomeScreenContent(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        // Modern Header with Gradient Background
-        // Collapsible header
+        // Premium Header with Sophisticated Gradient & Spacing
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -108,166 +111,234 @@ private fun HomeScreenContent(
                     brush = Brush.verticalGradient(
                         colors = listOf(
                             MaterialTheme.colorScheme.primary,
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
-                        )
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
+                        ),
+                        startY = 0f,
+                        endY = 400f // Longer gradient for sophistication
                     )
                 )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = 20.dp, vertical = 20.dp), // Increased padding for premium feel
+                verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Top Bar with Title and Notification Icon
+                // Top Bar - Enhanced with better spacing
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Text(
-                            text = "Laporan Terbaru di Kampus",
+                            text = "Lost & Found Kampus",
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
+                            color = Color.White,
+                            letterSpacing = (-0.5).sp // Tighter letter spacing for premium look
                         )
                         Text(
-                            text = "Temukan atau laporkan barang hilang",
+                            text = "Temukan atau laporkan barang hilang dengan mudah",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+                            color = Color.White.copy(alpha = 0.85f),
+                            letterSpacing = 0.sp
                         )
                     }
                     
-                    // Notification Icon - animated on press
-                    Box {
+                    // Premium Notification Icon with enhanced styling
+                    Box(
+                        modifier = Modifier.padding(start = 16.dp)
+                    ) {
                         val bellInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                         val bellPressed by bellInteraction.collectIsPressedAsState()
-                        val bellScale by animateFloatAsState(if (bellPressed) 0.9f else 1f)
+                        val bellScale by animateFloatAsState(
+                            targetValue = if (bellPressed) 0.9f else 1f,
+                            animationSpec = tween(100)
+                        )
 
-                        IconButton(
-                            onClick = { onNavigateToNotifications() },
-                            interactionSource = bellInteraction,
+                        Surface(
                             modifier = Modifier
                                 .size(48.dp)
-                                .scale(bellScale)
+                                .scale(bellScale),
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.15f),
+                            onClick = { onNavigateToNotifications() },
+                            interactionSource = bellInteraction
                         ) {
-                            Icon(
-                                Icons.Filled.Notifications,
-                                contentDescription = "Notifikasi",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
+                            Box(
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.Notifications,
+                                    contentDescription = "Notifikasi",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
 
-                        // Badge dot jika ada notifikasi baru
+                        // Enhanced notification badge with better positioning
                         if (hasUnreadNotifications) {
-                            Box(
+                            Surface(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .size(12.dp)
-                                    .background(
-                                        color = MaterialTheme.colorScheme.error,
-                                        shape = CircleShape
+                                    .offset(x = (-2).dp, y = 2.dp),
+                                shape = CircleShape,
+                                color = LostRed,
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .padding(2.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (unreadCount > 9) "9+" else unreadCount.toString(),
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                     )
-                                    .border(
-                                        width = 2.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = CircleShape
-                                    )
-                            )
+                                }
+                            }
                         }
                     }
                 }
                 
-                // Modern Search Bar with animated focus state
+                // Premium Search Bar with enhanced styling
                 var searchFocused by remember { mutableStateOf(false) }
-                val searchElevation by animateFloatAsState(if (searchFocused) 8f else 2f)
+                val searchElevation by animateFloatAsState(
+                    targetValue = if (searchFocused) 12f else 4f, // Higher elevation for premium
+                    animationSpec = tween(300)
+                )
+                val searchScale by animateFloatAsState(
+                    targetValue = if (searchFocused) 1.02f else 1f,
+                    animationSpec = tween(300)
+                )
 
-                TextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.setSearchQuery(it) },
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(searchElevation.dp, MaterialTheme.shapes.large),
-                    placeholder = {
-                        Text(
-                            "Cari barang (tas, HP, kunci…)",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Filled.Search,
-                            contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    trailingIcon = if (searchQuery.isNotBlank()) {
-                        {
-                            IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                Icon(Icons.Filled.Close, contentDescription = "Clear")
+                        .scale(searchScale),
+                    shape = RoundedCornerShape(16.dp),
+                    shadowElevation = searchElevation.dp,
+                    color = Color.White
+                ) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.setSearchQuery(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                "Cari barang hilang atau ditemukan...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
+                        trailingIcon = if (searchQuery.isNotBlank()) {
+                            {
+                                Surface(
+                                    modifier = Modifier.size(32.dp),
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    onClick = { viewModel.setSearchQuery("") }
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Close, 
+                                        contentDescription = "Clear",
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .padding(2.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
-                        }
-                    } else null,
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.large,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                        unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                        disabledIndicatorColor = androidx.compose.ui.graphics.Color.Transparent
-                    ),
-                    interactionSource = remember { MutableInteractionSource() }
-                )
+                        } else null,
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+                }
             }
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         
-        // Modern Filter Chips
+        // Premium Filter Chips with enhanced styling
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Semua Filter
             FilterChip(
                 selected = selectedFilter == null,
-                onClick = { 
-                    viewModel.setFilter(null) 
-                },
+                onClick = { viewModel.setFilter(null) },
                 label = { 
                     Text(
                         "Semua",
-                        fontWeight = if (selectedFilter == null) FontWeight.Bold else FontWeight.Normal
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selectedFilter == null) FontWeight.SemiBold else FontWeight.Medium
                     )
                 },
                 leadingIcon = if (selectedFilter == null) {
                     {
                         Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            imageVector = Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 } else null,
+                shape = RoundedCornerShape(12.dp),
                 colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    selectedLabelColor = Color.White,
+                    selectedLeadingIconColor = Color.White
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = selectedFilter == null,
+                    borderColor = if (selectedFilter == null) Color.Transparent else MaterialTheme.colorScheme.outline,
+                    selectedBorderColor = Color.Transparent,
+                    borderWidth = 1.dp
                 )
             )
             
+            // Hilang Filter
             FilterChip(
                 selected = selectedFilter == ItemType.LOST,
-                onClick = { 
-                    viewModel.setFilter(ItemType.LOST) 
-                },
+                onClick = { viewModel.setFilter(ItemType.LOST) },
                 label = { 
                     Text(
                         "Hilang",
-                        fontWeight = if (selectedFilter == ItemType.LOST) FontWeight.Bold else FontWeight.Normal
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selectedFilter == ItemType.LOST) FontWeight.SemiBold else FontWeight.Medium
                     )
                 },
                 leadingIcon = if (selectedFilter == ItemType.LOST) {
@@ -275,25 +346,36 @@ private fun HomeScreenContent(
                         Icon(
                             imageVector = Icons.Filled.Check,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 } else null,
+                shape = RoundedCornerShape(12.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.error,
-                    selectedLabelColor = MaterialTheme.colorScheme.onError
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContainerColor = LostRed,
+                    selectedLabelColor = Color.White,
+                    selectedLeadingIconColor = Color.White
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = selectedFilter == ItemType.LOST,
+                    borderColor = if (selectedFilter == ItemType.LOST) Color.Transparent else MaterialTheme.colorScheme.outline,
+                    selectedBorderColor = Color.Transparent,
+                    borderWidth = 1.dp
                 )
             )
             
+            // Ditemukan Filter
             FilterChip(
                 selected = selectedFilter == ItemType.FOUND,
-                onClick = { 
-                    viewModel.setFilter(ItemType.FOUND) 
-                },
+                onClick = { viewModel.setFilter(ItemType.FOUND) },
                 label = { 
                     Text(
                         "Ditemukan",
-                        fontWeight = if (selectedFilter == ItemType.FOUND) FontWeight.Bold else FontWeight.Normal
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selectedFilter == ItemType.FOUND) FontWeight.SemiBold else FontWeight.Medium
                     )
                 },
                 leadingIcon = if (selectedFilter == ItemType.FOUND) {
@@ -301,13 +383,24 @@ private fun HomeScreenContent(
                         Icon(
                             imageVector = Icons.Filled.Check,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 } else null,
+                shape = RoundedCornerShape(12.dp),
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = com.campus.lostfound.ui.theme.FoundGreen,
-                    selectedLabelColor = androidx.compose.ui.graphics.Color.White
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContainerColor = FoundGreen,
+                    selectedLabelColor = Color.White,
+                    selectedLeadingIconColor = Color.White
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = selectedFilter == ItemType.FOUND,
+                    borderColor = if (selectedFilter == ItemType.FOUND) Color.Transparent else MaterialTheme.colorScheme.outline,
+                    selectedBorderColor = Color.Transparent,
+                    borderWidth = 1.dp
                 )
             )
         }
@@ -329,26 +422,7 @@ private fun HomeScreenContent(
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                        // Illustration composable (vector-like) for empty state
-                        com.campus.lostfound.ui.components.EmptyStateIllustration.EmptyStateHomeIllustration()
-
-                    Text(
-                        text = "Belum ada laporan",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Jadilah yang pertama melaporkan",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
+                com.campus.lostfound.ui.components.EmptyStateIllustration.EmptyStateHomeIllustration()
             }
         } else {
             LazyColumn(
@@ -384,6 +458,5 @@ private fun HomeScreenContent(
             }
         }
     }
-    
 }
 

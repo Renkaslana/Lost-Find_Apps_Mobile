@@ -3,6 +3,7 @@ package com.campus.lostfound.ui.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.campus.lostfound.data.LocalHistoryRepository
 import com.campus.lostfound.data.model.LostFoundItem
 import com.campus.lostfound.data.repository.LostFoundRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +19,11 @@ class ActivityViewModel(
     private val _myReports = MutableStateFlow<List<LostFoundItem>>(emptyList())
     val myReports: StateFlow<List<LostFoundItem>> = _myReports.asStateFlow()
 
+    // Ubah ke CompletedReport untuk menyimpan info tanggal selesai
+    private val _historyWithDate = MutableStateFlow<List<LocalHistoryRepository.CompletedReport>>(emptyList())
+    val historyWithDate: StateFlow<List<LocalHistoryRepository.CompletedReport>> = _historyWithDate.asStateFlow()
+    
+    // Keep legacy flow for backward compatibility
     private val _history = MutableStateFlow<List<LostFoundItem>>(emptyList())
     val history: StateFlow<List<LostFoundItem>> = _history.asStateFlow()
     
@@ -45,9 +51,13 @@ class ActivityViewModel(
 
     fun loadMyHistory() {
         viewModelScope.launch {
-            val userId = repository.getCurrentUserId()
-            repository.getUserHistory(userId).collect { items ->
-                _history.value = items
+            // Load dengan info tanggal selesai
+            repository.getCompletedReportsWithDate().collect { completedReports ->
+                val userId = repository.getCurrentUserId()
+                // Filter by current user
+                val userReports = completedReports.filter { it.item.userId == userId }
+                _historyWithDate.value = userReports
+                _history.value = userReports.map { it.item }
             }
         }
     }
@@ -69,6 +79,26 @@ class ActivityViewModel(
                     _errorMessage.value = error.message ?: "Gagal menghapus laporan"
                 }
             )
+        }
+    }
+    
+    /**
+     * Hapus dari riwayat lokal (hanya untuk laporan yang sudah selesai)
+     */
+    fun deleteFromHistory(itemId: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            
+            val success = repository.deleteFromLocalHistory(itemId)
+            
+            if (success) {
+                _isLoading.value = false
+                onSuccess()
+            } else {
+                _isLoading.value = false
+                _errorMessage.value = "Gagal menghapus riwayat"
+            }
         }
     }
     

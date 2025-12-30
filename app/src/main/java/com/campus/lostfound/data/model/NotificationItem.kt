@@ -79,6 +79,11 @@ enum class NotificationType(val displayName: String, val iconName: String) {
     CONTACTED("Dihubungi", "phone"),
     STATUS_CHANGED("Status Berubah", "info"),
     ITEM_FOUND("Barang Ditemukan", "check_circle"),
+    ITEM_LOST("Barang Hilang", "search"),
+    ITEM_COMPLETED("Selesai", "verified"),
+    ITEM_RETURNED("Dikembalikan", "handshake"),
+    MATCH_FOUND("Kecocokan Ditemukan", "connect_without_contact"),
+    REMINDER("Pengingat", "alarm"),
     OTHER("Lainnya", "notifications")
 }
 

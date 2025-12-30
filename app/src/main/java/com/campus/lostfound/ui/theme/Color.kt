@@ -2,39 +2,52 @@ package com.campus.lostfound.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Primary Colors - Modern Blue/Cyan (avoid purple)
-val PrimaryBlue = Color(0xFF2196F3) // Material Blue 500
-val PrimaryBlueDark = Color(0xFF1976D2) // Material Blue 700
-val PrimaryBlueLight = Color(0xFF64B5F6) // Material Blue 300
-val PrimaryCyan = Color(0xFF00BCD4) // Cyan 500
-val PrimaryCyanDark = Color(0xFF0097A7) // Cyan 700
+// Brand / Primary Palette - Premium Modern Look
+val PrimaryBlue = Color(0xFF0A1628) // Deep navy - sophisticated primary
+val PrimaryBlueDark = Color(0xFF05111C) // Darker variant for elevated elements
+val PrimaryBlueLight = Color(0xFF1B2937) // Lighter tint for containers
+val AccentTeal = Color(0xFF00C896) // Vibrant teal - modern accent
+val PrimaryCyan = Color(0xFF0085FF) // Premium blue accent
 
-// Secondary Colors - Teal
-val Teal = Color(0xFF009688) // Teal 500
-val TealDark = Color(0xFF00796B) // Teal 700
-val TealLight = Color(0xFF4DB6AC) // Teal 300
+// Secondary Colors - Refined palette
+val Teal = Color(0xFF006B5A) // Deep teal secondary
+val TealDark = Color(0xFF004940)
+val TealLight = Color(0xFFE6F7F3)
 
-// Status Colors
-val LostRed = Color(0xFFEF5350) // Red 400
-val LostRedLight = Color(0xFFFFEBEE) // Red 50
-val LostRedDark = Color(0xFFE53935) // Red 600
+// Status Colors - Higher contrast, accessible
+val LostRed = Color(0xFFFF6B6B) // Vibrant coral for "Hilang" - better contrast
+val LostRedLight = Color(0xFFFFF0F0)
+val LostRedDark = Color(0xFFE53E3E) // Strong red for critical actions
 
-val FoundGreen = Color(0xFF66BB6A) // Green 400
-val FoundGreenLight = Color(0xFFE8F5E9) // Green 50
-val FoundGreenDark = Color(0xFF43A047) // Green 600
+val FoundGreen = Color(0xFF00D084) // Bright success green for "Ditemukan"
+val FoundGreenLight = Color(0xFFEFFDF7)
+val FoundGreenDark = Color(0xFF00A368) // Strong green
 
-// Background Colors - Light Mode
-val BackgroundLight = Color(0xFFFAFAFA) // Grey 50
-val SurfaceLight = Color(0xFFFFFFFF) // White
+// Background Colors - Premium surfaces
+val BackgroundLight = Color(0xFFFBFCFE) // Pure, clean background
+val SurfaceLight = Color(0xFFFFFFFF) // Clean white for cards
 
-// Background Colors - Dark Mode
-val BackgroundDark = Color(0xFF121212) // Material Dark Background
-val SurfaceDark = Color(0xFF1E1E1E) // Material Dark Surface
-val SurfaceVariantDark = Color(0xFF2C2C2C) // Dark Surface Variant
+// Background Colors - Dark Mode (Premium night mode)
+val BackgroundDark = Color(0xFF0A0E13) // Rich dark background
+val SurfaceDark = Color(0xFF151A21) // Elevated surface
+val SurfaceVariantDark = Color(0xFF1F252E) // Card backgrounds
 
-// Neutral Colors
-val OnSurfaceLight = Color(0xFF1C1B1F) // Material On Surface Light
-val OnSurfaceDark = Color(0xFFE6E1E5) // Material On Surface Dark
-val OnSurfaceVariantLight = Color(0xFF49454F) // Material On Surface Variant Light
-val OnSurfaceVariantDark = Color(0xFFCAC4D0) // Material On Surface Variant Dark
+// Neutral Colors - HIGH CONTRAST for readability
+val OnSurfaceLight = Color(0xFF0D0E10) // Very strong text color - almost black
+val OnSurfaceDark = Color(0xFFF5F6F7)
+val OnSurfaceVariantLight = Color(0xFF3D4043) // Darker muted text - much better readability
+val OnSurfaceVariantDark = Color(0xFFD0D4D9)
+
+// Text Colors for specific use cases
+val TextPrimary = Color(0xFF1A1C1E) // Primary text - strong
+val TextSecondary = Color(0xFF44474B) // Secondary text - still readable
+val TextTertiary = Color(0xFF6B6E73) // Tertiary/hint text
+
+// Divider / Stroke - Subtle separation
+val DividerStroke = Color(0xFFE8EAED) // Clean, subtle dividers
+
+// Premium accent colors
+val WarningOrange = Color(0xFFFF9500) // iOS-inspired orange
+val PurpleAccent = Color(0xFF8B5CF6) // Modern purple
+val SurfaceElevated = Color(0xFFFFFFFF) // Elevated surfaces
 

@@ -26,6 +26,7 @@ import java.util.UUID
 class LostFoundRepository(private val context: Context) {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    private val localHistoryRepository = com.campus.lostfound.data.LocalHistoryRepository(context)
     
     fun getCurrentUserId(): String {
         return auth.currentUser?.uid ?: run {
@@ -198,37 +199,27 @@ class LostFoundRepository(private val context: Context) {
         awaitClose { listenerRegistration.remove() }
     }
 
-    fun getUserHistory(userId: String): Flow<List<LostFoundItem>> = callbackFlow {
-        // Ensure authenticated before listening to private history
-        try {
-            ensureAuthenticated()
-        } catch (ex: Exception) {
-            Log.e("LostFoundRepo", "Auth failed before history listen: ${ex.message}")
-            trySend(emptyList())
-            awaitClose { }
-            return@callbackFlow
-        }
-
-        val query = firestore.collection("users").document(userId)
-            .collection("history")
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-
-        val listenerRegistration = query.addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                // fallback: return empty list on error but don't close
-                Log.e("LostFoundRepo", "History query error: ${error.message}")
-                trySend(emptyList())
-                return@addSnapshotListener
+    /**
+     * Get user history from LOCAL storage (device only)
+     * Data akan hilang jika user hapus data/uninstall aplikasi
+     */
+    fun getUserHistory(userId: String): Flow<List<LostFoundItem>> {
+        return kotlinx.coroutines.flow.flow {
+            localHistoryRepository.historyFlow.collect { completedReports ->
+                // Filter by userId (untuk keamanan) dan emit items saja
+                val items = completedReports
+                    .filter { it.item.userId == userId }
+                    .map { it.item }
+                emit(items)
             }
-
-            val items = snapshot?.documents?.mapNotNull { doc ->
-                doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
-            } ?: emptyList()
-
-            trySend(items)
         }
-
-        awaitClose { listenerRegistration.remove() }
+    }
+    
+    /**
+     * Get completed reports with completion date info
+     */
+    fun getCompletedReportsWithDate(): Flow<List<com.campus.lostfound.data.LocalHistoryRepository.CompletedReport>> {
+        return localHistoryRepository.historyFlow
     }
     
     suspend fun addItem(item: LostFoundItem, imageUri: Uri?): Result<String> {
@@ -336,61 +327,43 @@ class LostFoundRepository(private val context: Context) {
 
             // Verify ownership
             val itemDoc = firestore.collection("items").document(itemId).get().await()
-            val item = itemDoc.toObject(LostFoundItem::class.java)
+            val item = itemDoc.toObject(LostFoundItem::class.java)?.copy(id = itemId)
 
             if (item?.userId != userId) {
                 return Result.failure(Exception("Anda tidak memiliki izin untuk mengubah laporan ini"))
             }
 
-            // Archive to user's private history then remove from public collection
-            val archiveRef = firestore.collection("users").document(userId)
-                .collection("history").document(itemId)
-
-            val archivedItem = item.copy(isCompleted = true)
-
-            archiveRef.set(archivedItem).await()
-            // TEMPORARY: write a persistent global notification so UI shows completion
-            try {
-                val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                val lastNotif = prefs.getLong("last_notif_ts", 0L)
-                val now = System.currentTimeMillis()
-                val rateLimitMs = 30_000L
-
-                if (now - lastNotif >= rateLimitMs) {
-                    val expireAtMillis = now + 7L * 24 * 60 * 60 * 1000
-                    val fmt = java.text.SimpleDateFormat("d MMM yyyy, HH:mm", java.util.Locale("id", "ID"))
-                    val completedAtStr = fmt.format(java.util.Date())
-                    val notif = hashMapOf<String, Any?>(
-                        "title" to ("Laporan Selesai: ${item.itemName ?: "Barang"}"),
-                        "body" to ("Laporan untuk \"${item.itemName ?: "barang"}\" telah diselesaikan pada $completedAtStr"),
-                        "timestamp" to FieldValue.serverTimestamp(),
-                        "expireAt" to Timestamp(Date(expireAtMillis)),
-                        "data" to hashMapOf("itemId" to itemId, "type" to "REPORT_COMPLETED"),
-                        "userId" to userId
-                    )
-
-                    firestore.collection("global_notifications")
-                        .add(notif)
-                        .addOnSuccessListener {
-                            prefs.edit().putLong("last_notif_ts", now).apply()
-                            android.util.Log.d("LostFoundRepo", "Completion notification written: ${it.id}")
-                        }
-                        .addOnFailureListener { e ->
-                            android.util.Log.e("LostFoundRepo", "Failed to write completion notification: ${e.message}")
-                        }
-                } else {
-                    android.util.Log.d("LostFoundRepo", "Completion notification rate-limited (skip write)")
-                }
-            } catch (ex: Exception) {
-                android.util.Log.e("LostFoundRepo", "Completion notification error: ${ex.message}")
+            // Save to LOCAL history (device only)
+            val savedLocally = localHistoryRepository.saveCompletedReport(item)
+            if (!savedLocally) {
+                Log.w("LostFoundRepo", "Failed to save to local history, but continuing...")
             }
+            
+            Log.d("LostFoundRepo", "Report saved to LOCAL history: ${item.itemName}")
 
+            // Delete from Firestore (public collection)
             firestore.collection("items").document(itemId).delete().await()
+            Log.d("LostFoundRepo", "Report deleted from Firestore: $itemId")
 
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("LostFoundRepo", "Error marking as completed: ${e.message}")
             Result.failure(e)
         }
+    }
+    
+    /**
+     * Delete report from local history
+     */
+    fun deleteFromLocalHistory(itemId: String): Boolean {
+        return localHistoryRepository.deleteFromHistory(itemId)
+    }
+    
+    /**
+     * Clear all local history
+     */
+    fun clearLocalHistory(): Boolean {
+        return localHistoryRepository.clearAllHistory()
     }
     
     suspend fun getItemById(itemId: String): Result<LostFoundItem> {

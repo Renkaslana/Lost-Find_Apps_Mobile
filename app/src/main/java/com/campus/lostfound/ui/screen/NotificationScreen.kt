@@ -263,6 +263,11 @@ fun getNotificationIcon(type: NotificationType): ImageVector {
         NotificationType.CONTACTED -> Icons.Default.Phone
         NotificationType.STATUS_CHANGED -> Icons.Default.Info
         NotificationType.ITEM_FOUND -> Icons.Default.CheckCircle
+        NotificationType.ITEM_LOST -> Icons.Default.Search
+        NotificationType.ITEM_COMPLETED -> Icons.Default.Verified
+        NotificationType.ITEM_RETURNED -> Icons.Default.Handshake
+        NotificationType.MATCH_FOUND -> Icons.Default.Link
+        NotificationType.REMINDER -> Icons.Default.Alarm
         NotificationType.OTHER -> Icons.Default.Notifications
     }
 }
@@ -274,6 +279,11 @@ fun getNotificationIconColor(type: NotificationType): Color {
         NotificationType.CONTACTED -> MaterialTheme.colorScheme.secondary
         NotificationType.STATUS_CHANGED -> MaterialTheme.colorScheme.tertiary
         NotificationType.ITEM_FOUND -> FoundGreen
+        NotificationType.ITEM_LOST -> LostRed
+        NotificationType.ITEM_COMPLETED -> Color(0xFF4CAF50)
+        NotificationType.ITEM_RETURNED -> Color(0xFF2196F3)
+        NotificationType.MATCH_FOUND -> Color(0xFF9C27B0)
+        NotificationType.REMINDER -> Color(0xFFFF9800)
         NotificationType.OTHER -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 }
