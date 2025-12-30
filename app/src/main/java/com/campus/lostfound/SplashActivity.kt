@@ -24,20 +24,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.unit.Dp
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.TileMode
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -189,34 +179,34 @@ fun SplashScreenContent(onTimeout: () -> Unit) {
             verticalArrangement = Arrangement.Center,
             modifier = Modifier.padding(32.dp)
         ) {
-                    // Logo with glow, shimmer, shadow, fade + scale animation (use splash_opening.png)
+                    // Logo with subtle glow, shadow, fade + scale animation (use splash_opening.png)
                     Box(
                         modifier = Modifier
                             .size(160.dp)
                             .graphicsLayer { translationY = bobbing },
                         contentAlignment = Alignment.Center
                     ) {
-                        // animated glow behind the icon
-                        GlowLayer(size = 140.dp, color = colorResource(id = R.color.splash_opening_accent))
-
-                        // rounded card with icon + shimmer overlay
-                        androidx.compose.material3.Card(
-                            shape = RoundedCornerShape(28.dp),
+                        // soft glow behind the icon
+                        Box(
                             modifier = Modifier
-                                .size(140.dp),
-                            elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 8.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                ShimmerImage(
-                                    painter = painterResource(id = R.drawable.splash_opening),
-                                    contentDescription = "App Opening Icon",
-                                    modifier = Modifier
-                                        .size(120.dp)
-                                        .scale(logoScale)
-                                        .alpha(logoAlpha)
+                                .size(140.dp)
+                                .background(
+                                    color = colorResource(id = R.color.splash_opening_accent).copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(28.dp)
                                 )
-                            }
-                        }
+                        )
+
+                        // actual icon with shadow, scale and alpha
+                        Image(
+                            painter = painterResource(id = R.drawable.splash_opening),
+                            contentDescription = "App Opening Icon",
+                            modifier = Modifier
+                                .size(120.dp)
+                                .scale(logoScale)
+                                .alpha(logoAlpha)
+                                .graphicsLayer { translationY = bobbing }
+                                .shadow(elevation = 10.dp, shape = RoundedCornerShape(28.dp))
+                        )
                     }
             
             Spacer(modifier = Modifier.height(24.dp))
@@ -249,9 +239,9 @@ fun SplashScreenContent(onTimeout: () -> Unit) {
                     }
             )
             Spacer(modifier = Modifier.height(18.dp))
-                PremiumThreeDotLoader(
+                ThreeDotLoader(
                     modifier = Modifier.alpha(if (startAnimation) 1f else 0f),
-                    dotColor = colorResource(id = R.color.splash_opening_accent)
+                    dotColor = Color.White
                 )
             }
 
@@ -308,92 +298,6 @@ fun ThreeDotLoader(modifier: Modifier = Modifier, dotColor: Color = Color.White)
                     .background(color = dotColor, shape = RoundedCornerShape(50))
             )
         }
-    }
-}
-
-@Composable
-fun PremiumThreeDotLoader(modifier: Modifier = Modifier, dotColor: Color = Color.White) {
-    val t = rememberInfiniteTransition()
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        for (i in 0..2) {
-            val scale by t.animateFloat(
-                initialValue = 0.6f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 480, easing = FastOutSlowInEasing, delayMillis = i * 140),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "premiumDotScale$i"
-            )
-
-            val alpha by t.animateFloat(
-                initialValue = 0.5f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 480, delayMillis = i * 140),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "premiumDotAlpha$i"
-            )
-
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .scale(scale)
-                    .background(color = dotColor.copy(alpha = alpha), shape = CircleShape)
-            )
-        }
-    }
-}
-
-@Composable
-fun GlowLayer(layerSize: Dp, color: Color) {
-    val t = rememberInfiniteTransition()
-    val alpha by t.animateFloat(
-        initialValue = 0.06f,
-        targetValue = 0.16f,
-        animationSpec = infiniteRepeatable(animation = tween(1000), repeatMode = RepeatMode.Reverse),
-        label = "glowAlpha"
-    )
-
-    Box(modifier = Modifier.size(layerSize), contentAlignment = Alignment.Center) {
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val r = size.minDimension / 2f
-            drawCircle(color = color.copy(alpha = alpha), radius = r)
-        }
-    }
-}
-
-@Composable
-fun ShimmerImage(painter: Painter, contentDescription: String?, modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition()
-    val translateAnim by transition.animateFloat(
-        initialValue = -1f,
-        targetValue = 1.5f,
-        animationSpec = infiniteRepeatable(tween(durationMillis = 900, easing = LinearEasing)),
-        label = "shimmerTranslate"
-    )
-
-    Box(modifier = modifier) {
-        Image(painter = painter, contentDescription = contentDescription, modifier = Modifier.matchParentSize())
-        // shimmer overlay using drawWithCache to position gradient
-        Box(modifier = Modifier.matchParentSize().drawWithCache {
-            onDrawWithContent {
-                drawContent()
-                val width = size.width
-                val x = translateAnim * width
-                val grad = Brush.linearGradient(
-                    colors = listOf(Color.Transparent, Color.White.copy(alpha = 0.10f), Color.Transparent),
-                    start = Offset(x - width * 0.25f, 0f),
-                    end = Offset(x + width * 0.25f, size.height)
-                )
-                drawRect(grad, blendMode = BlendMode.SrcOver)
-            }
-        })
     }
 }
 
