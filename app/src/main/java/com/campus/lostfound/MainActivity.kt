@@ -1,8 +1,16 @@
 package com.campus.lostfound
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.util.Log
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -30,10 +38,42 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.campus.lostfound.service.LocalNotificationService
+import com.campus.lostfound.service.RealtimeNotificationListener
+import com.campus.lostfound.service.OneSignalNotificationService
 
 class MainActivity : ComponentActivity() {
+    
+    private lateinit var localNotificationService: LocalNotificationService
+    private lateinit var realtimeListener: RealtimeNotificationListener
+    private lateinit var oneSignalService: OneSignalNotificationService
+    
+    // Permission launcher for Android 13+ notification permission
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Log.d("MainActivity", "Notification permission granted")
+        } else {
+            Log.w("MainActivity", "Notification permission denied")
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Request notification permission for Android 13+
+        requestNotificationPermission()
+
+        // Handle navigation from push notification
+        handleNotificationNavigation(intent)
+        
+        // Initialize notification services
+        localNotificationService = LocalNotificationService(this)
+        realtimeListener = RealtimeNotificationListener(this, localNotificationService)
+        
+        // Initialize OneSignal for real-time push notifications
+        initializeOneSignal()
 
         // Initialize per-device lastSeen on first run so new installs don't see old notifications
         try {
@@ -50,6 +90,15 @@ class MainActivity : ComponentActivity() {
             .addOnCompleteListener { task ->
                 if (!task.isSuccessful) Log.w("MainActivity", "Topic subscribe failed", task.exception)
             }
+        
+        // Subscribe to campus reports topic for push notifications
+        FirebaseMessaging.getInstance().subscribeToTopic("campus_reports")
+            .addOnCompleteListener { task ->
+                if (!task.isSuccessful) Log.w("MainActivity", "Campus reports subscribe failed", task.exception)
+            }
+        
+        // Start real-time notification listener
+        realtimeListener.startListening()
         setContent {
             // Collect theme settings
             val context = LocalContext.current
@@ -76,6 +125,66 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleNotificationNavigation(intent)
+    }
+
+    private fun handleNotificationNavigation(intent: Intent?) {
+        intent?.let {
+            val navigateTo = it.getStringExtra("navigate_to")
+            val itemId = it.getStringExtra("item_id")
+            
+            // Store navigation info to be handled by Compose
+            val prefs = getSharedPreferences("navigation", Context.MODE_PRIVATE)
+            prefs.edit().apply {
+                putString("navigate_to", navigateTo)
+                putString("item_id", itemId)
+                putBoolean("has_pending_navigation", true)
+                apply()
+            }
+            
+            Log.d("MainActivity", "Stored navigation: $navigateTo, itemId: $itemId")
+        }
+    }
+    
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    Log.d("MainActivity", "Notification permission already granted")
+                }
+                else -> {
+                    Log.d("MainActivity", "Requesting notification permission...")
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        if (::realtimeListener.isInitialized) {
+            realtimeListener.cleanup()
+        }
+        if (::oneSignalService.isInitialized) {
+            oneSignalService.cleanup()
+        }
+    }
+    
+    private fun initializeOneSignal() {
+        try {
+            oneSignalService = OneSignalNotificationService(this)
+            oneSignalService.initialize()
+            Log.d("MainActivity", "✅ OneSignal service initialized")
+        } catch (e: Exception) {
+            Log.e("MainActivity", "❌ Failed to initialize OneSignal", e)
+        }
+    }
 }
 
 @Composable
@@ -84,6 +193,34 @@ fun MainScreen() {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: Screen.Home.route
+    
+    // Handle pending navigation from notification intent
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("navigation", Context.MODE_PRIVATE)
+        val hasPending = prefs.getBoolean("has_pending_navigation", false)
+        
+        if (hasPending) {
+            val navigateTo = prefs.getString("navigate_to", null)
+            val itemId = prefs.getString("item_id", null)
+            
+            when (navigateTo) {
+                "detail" -> {
+                    if (!itemId.isNullOrEmpty()) {
+                        navController.navigate(Screen.Detail.createRoute(itemId))
+                    }
+                }
+                "notifications" -> {
+                    navController.navigate(Screen.Notifications.route)
+                }
+                "home" -> {
+                    navController.navigate(Screen.Home.route)
+                }
+            }
+            
+            // Clear pending navigation
+            prefs.edit().clear().apply()
+        }
+    }
     
     // Notification ViewModel for badge count
     val notificationViewModel: NotificationViewModel = viewModel(
@@ -138,4 +275,3 @@ fun MainScreen() {
         }
     }
 }
-

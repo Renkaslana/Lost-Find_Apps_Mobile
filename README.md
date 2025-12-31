@@ -101,7 +101,9 @@ Aplikasi ini dibuat untuk keperluan edukasi dan pengembangan portofolio.
 1. Clone repository
 2. Buka dengan Android Studio
 3. Sync Gradle
-4. Setup Firebase (tambahkan google-services.json)
+4. Setup Firebase: minta `google-services.json` dari pengembang utama dan taruh file tersebut di `app/`.
+  - Repo tidak menyimpan `google-services.json` untuk keamanan.
+  - Ada file `app/google-services.json.template` sebagai contoh/instruksi.
 5. Run aplikasi
 
 ## 📝 Catatan Versi

@@ -7,6 +7,7 @@ import com.campus.lostfound.data.model.Category
 import com.campus.lostfound.data.model.ItemType
 import com.campus.lostfound.data.model.LostFoundItem
 import com.google.firebase.Timestamp
+import com.google.gson.Gson
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,6 +25,8 @@ class LocalHistoryRepository(context: Context) {
         PREFS_NAME, 
         Context.MODE_PRIVATE
     )
+    
+    private val gson = Gson()
     
     private val _historyFlow = MutableStateFlow<List<CompletedReport>>(emptyList())
     val historyFlow: Flow<List<CompletedReport>> = _historyFlow.asStateFlow()
@@ -94,6 +97,29 @@ class LocalHistoryRepository(context: Context) {
         }
     }
     
+    /**
+     * Get completed report by item ID from local history
+     */
+    fun getHistoryById(itemId: String): CompletedReport? {
+        return try {
+            val json = prefs.getString(KEY_HISTORY, null)
+            if (json != null) {
+                val jsonArray = JSONArray(json)
+                for (i in 0 until jsonArray.length()) {
+                    val reportJson = jsonArray.getJSONObject(i)
+                    val completedReport = gson.fromJson(reportJson.toString(), CompletedReport::class.java)
+                    if (completedReport.item.id == itemId) {
+                        return completedReport
+                    }
+                }
+            }
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get history by ID: ${e.message}")
+            null
+        }
+    }
+
     /**
      * Menghapus laporan dari riwayat lokal
      */

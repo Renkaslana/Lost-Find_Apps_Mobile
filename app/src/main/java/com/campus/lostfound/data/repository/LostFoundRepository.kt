@@ -225,6 +225,11 @@ class LostFoundRepository(private val context: Context) {
     suspend fun addItem(item: LostFoundItem, imageUri: Uri?): Result<String> {
         return try {
             val userId = ensureAuthenticated()
+            
+            // Store current user ID for notification filtering
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            prefs.edit().putString("current_user_id", userId).apply()
+            
             val itemWithUser = item.copy(userId = userId)
             
             // Convert image to Base64 if provided (opsional)
@@ -244,45 +249,6 @@ class LostFoundRepository(private val context: Context) {
             
             val docRef = firestore.collection("items").add(finalItem).await()
             android.util.Log.d("LostFoundRepo", "Item saved with ID: ${docRef.id}")
-
-            // TEMPORARY: write a persistent global notification from client-side so UI shows it immediately.
-            // This is a temporary measure until server-side Cloud Function is available.
-            // Safety: simple rate-limit and minimal fields. Revert this when Cloud Functions are deployed.
-            try {
-                val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                val lastNotif = prefs.getLong("last_notif_ts", 0L)
-                val now = System.currentTimeMillis()
-                val rateLimitMs = 30_000L // 30 seconds per device
-
-                if (now - lastNotif >= rateLimitMs) {
-                    val expireAtMillis = now + 7L * 24 * 60 * 60 * 1000 // 7 days
-
-                    val fmt = java.text.SimpleDateFormat("d MMM yyyy, HH:mm", java.util.Locale("id", "ID"))
-                    val createdAtStr = fmt.format(java.util.Date())
-                    val notif = hashMapOf<String, Any?>(
-                        "title" to ("Laporan Baru: ${finalItem.itemName ?: "Barang"}"),
-                        "body" to ("Laporan untuk \"${finalItem.itemName ?: "barang"}\" dibuat pada $createdAtStr"),
-                        "timestamp" to FieldValue.serverTimestamp(),
-                        "expireAt" to Timestamp(Date(expireAtMillis)),
-                        "data" to hashMapOf("itemId" to docRef.id, "type" to "NEW_REPORT"),
-                        "userId" to userId
-                    )
-
-                    firestore.collection("global_notifications")
-                        .add(notif)
-                        .addOnSuccessListener {
-                            prefs.edit().putLong("last_notif_ts", now).apply()
-                            android.util.Log.d("LostFoundRepo", "Notification written: ${it.id}")
-                        }
-                        .addOnFailureListener { e ->
-                            android.util.Log.e("LostFoundRepo", "Failed to write notification: ${e.message}")
-                        }
-                } else {
-                    android.util.Log.d("LostFoundRepo", "Notification rate-limited (skip write)")
-                }
-            } catch (ex: Exception) {
-                android.util.Log.e("LostFoundRepo", "Notification write error: ${ex.message}")
-            }
 
             Result.success(docRef.id)
         } catch (e: Exception) {
@@ -368,15 +334,34 @@ class LostFoundRepository(private val context: Context) {
     
     suspend fun getItemById(itemId: String): Result<LostFoundItem> {
         return try {
+            // First try to get from active items in Firestore
             val doc = firestore.collection("items").document(itemId).get().await()
             val item = doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
+            
             if (item != null) {
                 Result.success(item)
             } else {
-                Result.failure(Exception("Laporan tidak ditemukan"))
+                // If not found in active items, try to find in local history
+                val localHistory = localHistoryRepository.getHistoryById(itemId)
+                if (localHistory != null) {
+                    // Return the item from history with completed status
+                    Result.success(localHistory.item.copy(isCompleted = true))
+                } else {
+                    Result.failure(Exception("Laporan tidak ditemukan"))
+                }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            // Fallback to local history if Firestore fails
+            try {
+                val localHistory = localHistoryRepository.getHistoryById(itemId)
+                if (localHistory != null) {
+                    Result.success(localHistory.item.copy(isCompleted = true))
+                } else {
+                    Result.failure(e)
+                }
+            } catch (localError: Exception) {
+                Result.failure(e)
+            }
         }
     }
     

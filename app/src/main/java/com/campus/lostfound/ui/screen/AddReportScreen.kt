@@ -573,32 +573,80 @@ private fun Step3Content(
     if (showImageSourceDialog) {
         AlertDialog(
             onDismissRequest = { onShowImageSourceDialog(false) },
-            title = { Text("Pilih Sumber Foto") },
+            title = { 
+                Text(
+                    "Pilih Sumber Foto",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                ) 
+            },
             text = {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    TextButton(
+                    // Gallery Option
+                    Surface(
                         onClick = {
                             onShowImageSourceDialog(false)
                             imagePicker.pickFromGallery()
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                     ) {
-                        Icon(Icons.Default.Photo, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Pilih dari Galeri")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Photo, 
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Pilih dari Galeri",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
-                    TextButton(
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Camera Option
+                    Surface(
                         onClick = {
                             onShowImageSourceDialog(false)
                             imagePicker.takePhoto()
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
                     ) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Ambil Foto")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.PhotoCamera, 
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Ambil Foto",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 }
             },
@@ -606,7 +654,8 @@ private fun Step3Content(
                 TextButton(onClick = { onShowImageSourceDialog(false) }) {
                     Text("Batal")
                 }
-            }
+            },
+            shape = RoundedCornerShape(16.dp)
         )
     }
 }

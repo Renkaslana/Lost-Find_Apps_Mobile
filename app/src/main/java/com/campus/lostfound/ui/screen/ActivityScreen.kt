@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -51,7 +52,6 @@ private fun ActivityScreenContent(
     val errorMessage by viewModel.errorMessage.collectAsState(initial = null)
 
     var showDeleteDialog by remember { mutableStateOf<LostFoundItem?>(null) }
-    var showDeleteHistoryDialog by remember { mutableStateOf<LocalHistoryRepository.CompletedReport?>(null) }
     var showCompleteDialog by remember { mutableStateOf<LostFoundItem?>(null) }
     var showEditDialog by remember { mutableStateOf<LostFoundItem?>(null) }
     var showHistory by remember { mutableStateOf(false) }
@@ -151,8 +151,7 @@ private fun ActivityScreenContent(
                             enter = fadeIn(animationSpec = tween(300, delayMillis = index * 50)) + slideInVertically(initialOffsetY = { it / 2 }, animationSpec = tween(300, delayMillis = index * 50))) {
                             HistoryReportCard(
                                 completedReport = completedReport,
-                                context = context,
-                                onDelete = { showDeleteHistoryDialog = completedReport }
+                                context = context
                             )
                         }
                     }
@@ -205,22 +204,6 @@ private fun ActivityScreenContent(
         }
     }
     
-    // Delete Confirmation for History
-    showDeleteHistoryDialog?.let { completedReport ->
-        ModalBottomSheet(onDismissRequest = { showDeleteHistoryDialog = null }, containerColor = MaterialTheme.colorScheme.surface) {
-            Column(modifier = Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.error)
-                Text(text = "Hapus dari Riwayat?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Text(text = "Apakah Anda yakin ingin menghapus \"${completedReport.item.itemName}\" dari riwayat? Tindakan ini tidak dapat dibatalkan.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { showDeleteHistoryDialog = null }, modifier = Modifier.weight(1f)) { Text("Batal") }
-                    Button(onClick = { viewModel.deleteFromHistory(completedReport.item.id) { showDeleteHistoryDialog = null } }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { Text("Hapus") }
-                }
-            }
-        }
-    }
-
     // Complete Confirmation Bottom Sheet
     showCompleteDialog?.let { item ->
         ModalBottomSheet(onDismissRequest = { showCompleteDialog = null }, containerColor = MaterialTheme.colorScheme.surface) {
@@ -352,8 +335,7 @@ private fun ActiveReportCard(
 @Composable
 private fun HistoryReportCard(
     completedReport: LocalHistoryRepository.CompletedReport,
-    context: android.content.Context,
-    onDelete: () -> Unit
+    context: android.content.Context
 ) {
     val item = completedReport.item
     
@@ -409,17 +391,28 @@ private fun HistoryReportCard(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Divider()
-
-            // Only delete button for history
-            OutlinedButton(
-                onClick = onDelete,
+            // Info card instead of delete button
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
-                Icon(Icons.Default.DeleteForever, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Hapus dari Riwayat")
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Riwayat tersimpan di device ini dan akan hilang saat uninstall app.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -580,16 +573,92 @@ private fun EditReportDialog(
     )
 
     if (showImageSourceDialog) {
-        AlertDialog(onDismissRequest = { showImageSourceDialog = false }, title = { Text("Pilih Sumber Foto") }, text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { showImageSourceDialog = false; imagePicker.pickFromGallery() }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Photo, contentDescription = null); Spacer(modifier = Modifier.width(8.dp)); Text("Pilih dari Galeri")
+        AlertDialog(
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { 
+                Text(
+                    "Pilih Sumber Foto",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // Gallery Option
+                    Surface(
+                        onClick = {
+                            showImageSourceDialog = false
+                            imagePicker.pickFromGallery()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Photo,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Pilih dari Galeri",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Camera Option
+                    Surface(
+                        onClick = {
+                            showImageSourceDialog = false
+                            imagePicker.takePhoto()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.PhotoCamera,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Ambil Foto",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
-                TextButton(onClick = { showImageSourceDialog = false; imagePicker.takePhoto() }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.PhotoCamera, contentDescription = null); Spacer(modifier = Modifier.width(8.dp)); Text("Ambil Foto")
+            },
+            confirmButton = {
+                TextButton(onClick = { showImageSourceDialog = false }) {
+                    Text("Batal")
                 }
-            }
-        }, confirmButton = { TextButton(onClick = { showImageSourceDialog = false }) { Text("Batal") } })
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 

@@ -93,9 +93,10 @@ fun DetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (isOwner) {
+                        // First row: Edit and Selesai
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             OutlinedButton(
                                 onClick = { onNavigateToEdit?.invoke(itemId) },
@@ -103,8 +104,8 @@ fun DetailScreen(
                                 enabled = !(item?.isCompleted ?: false)
                             ) {
                                 Icon(Icons.Filled.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Edit")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Edit", maxLines = 1)
                             }
 
                             OutlinedButton(
@@ -113,21 +114,22 @@ fun DetailScreen(
                                 enabled = !(item?.isCompleted ?: false)
                             ) {
                                 Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Selesai")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Selesai", maxLines = 1)
                             }
-
-                            OutlinedButton(
-                                onClick = { showDeleteDialog = true },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Hapus")
-                            }
+                        }
+                        
+                        // Second row: Hapus (full width)
+                        OutlinedButton(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(Icons.Filled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Hapus Laporan", maxLines = 1)
                         }
                     }
 
@@ -147,16 +149,28 @@ fun DetailScreen(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = item != null,
+                        enabled = item != null && !(item?.isCompleted ?: false),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
+                            containerColor = if (item?.isCompleted == true) 
+                                MaterialTheme.colorScheme.surfaceVariant
+                            else 
+                                MaterialTheme.colorScheme.secondary,
+                            contentColor = if (item?.isCompleted == true)
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            else
+                                MaterialTheme.colorScheme.onSecondary
                         ),
                         shape = RoundedCornerShape(28.dp)
                     ) {
-                        Icon(Icons.Filled.Phone, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Hubungi via WhatsApp", fontWeight = FontWeight.Bold)
+                        if (item?.isCompleted == true) {
+                            Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Laporan Sudah Selesai", fontWeight = FontWeight.Bold)
+                        } else {
+                            Icon(Icons.Filled.Phone, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Hubungi via WhatsApp", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

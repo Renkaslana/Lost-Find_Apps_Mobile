@@ -7,7 +7,8 @@ Kampus_Lost&Found/
 ├── app/
 │   ├── build.gradle.kts          # App-level Gradle config
 │   ├── proguard-rules.pro        # ProGuard rules
-│   ├── google-services.json      # Firebase config (harus di-download)
+│   ├── google-services.json      # Firebase config (HARUS diperoleh dari pengembang utama — TIDAK disimpan di repo)
+│   ├── google-services.json.template # Template/placeholder yang menjelaskan cara mendapatkan file
 │   └── src/
 │       └── main/
 │           ├── AndroidManifest.xml
@@ -167,7 +168,8 @@ UI Screen (Recomposition)
 - `gradle.properties`: Gradle properties
 
 ### Firebase
-- `google-services.json`: **HARUS di-download dari Firebase Console**
+- `google-services.json`: **HARUS diperoleh dari pengembang utama** dan diletakkan di `app/` sebelum menjalankan aplikasi.
+- `google-services.json.template`: Contoh/template di-repo yang berisi instruksi (tanpa kredensial). Jangan commit file asli.
 - `file_paths.xml`: FileProvider paths untuk camera
 
 ### Manifest

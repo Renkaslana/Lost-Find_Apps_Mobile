@@ -81,7 +81,7 @@ private fun HomeScreenContent(
     val selectedFilter by viewModel.selectedFilter.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     
-    // Notification ViewModel untuk unread count
+    // Notification ViewModel untuk unread count (local storage)
     val notificationViewModel: NotificationViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -182,26 +182,26 @@ private fun HomeScreenContent(
                             }
                         }
 
-                        // Enhanced notification badge with better positioning
+                        // Enhanced notification badge with better positioning and count display
                         if (hasUnreadNotifications) {
                             Surface(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .offset(x = (-2).dp, y = 2.dp),
+                                    .offset(x = 4.dp, y = (-4).dp),
                                 shape = CircleShape,
                                 color = LostRed,
                                 shadowElevation = 2.dp
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(16.dp)
-                                        .padding(2.dp),
+                                        .defaultMinSize(minWidth = 20.dp, minHeight = 20.dp)
+                                        .padding(horizontal = 5.dp, vertical = 2.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = if (unreadCount > 9) "9+" else unreadCount.toString(),
+                                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
                                         color = Color.White,
-                                        fontSize = 9.sp,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                     )

@@ -84,6 +84,12 @@ dependencies {
     // Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging-ktx:23.3.0")
     
+    // OneSignal - Push Notifications
+    implementation("com.onesignal:OneSignal:[5.0.0, 5.99.99]")
+    
+    // JSON parsing
+    implementation("com.google.code.gson:gson:2.10.1")
+    
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.5.0")
     // DataStore Preferences for local settings persistence

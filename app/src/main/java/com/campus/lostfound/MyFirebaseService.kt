@@ -2,7 +2,10 @@ package com.campus.lostfound
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -18,15 +21,49 @@ class MyFirebaseService : FirebaseMessagingService() {
         val title = remoteMessage.notification?.title ?: remoteMessage.data["title"] ?: "Campus Lost & Found"
         val body = remoteMessage.notification?.body ?: remoteMessage.data["body"] ?: "Anda memiliki notifikasi baru"
 
+        // Extract data for navigation
+        val notificationType = remoteMessage.data["type"] ?: ""
+        val itemId = remoteMessage.data["itemId"] ?: ""
+
+        // Create pending intent for notification tap
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            when (notificationType) {
+                "NEW_REPORT", "COMPLETED_REPORT" -> {
+                    // Navigate to detail screen if itemId available, otherwise home
+                    if (itemId.isNotEmpty()) {
+                        putExtra("navigate_to", "detail")
+                        putExtra("item_id", itemId)
+                    } else {
+                        putExtra("navigate_to", "home")
+                    }
+                }
+                else -> {
+                    putExtra("navigate_to", "notifications")
+                }
+            }
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            this, 
+            itemId.hashCode(), 
+            intent, 
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVibrate(longArrayOf(1000, 1000, 1000))
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
 
         with(NotificationManagerCompat.from(this)) {
-            notify((System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
+            notify(itemId.hashCode().takeIf { it != 0 } ?: (System.currentTimeMillis() % Int.MAX_VALUE).toInt(), builder.build())
         }
     }
 
