@@ -71,9 +71,8 @@ class LostFoundRepository(private val context: Context) {
 
         val collection = firestore.collection("items")
 
-        // Gunakan query sederhana dulu (tanpa filter type di query)
-        // Filter type akan dilakukan di client side untuk menghindari index requirement
-        // Note: Field name di Firestore adalah "completed" (bukan "isCompleted")
+        // Filter hanya items yang belum selesai untuk home screen
+        // Completed items hanya muncul di ActivityScreen -> Riwayat
         val baseQuery = collection.whereEqualTo("completed", false)
             .orderBy("createdAt", Query.Direction.DESCENDING)
 
@@ -85,8 +84,7 @@ class LostFoundRepository(private val context: Context) {
                     error.message?.contains("FAILED_PRECONDITION") == true) {
 
                     Log.d("LostFoundRepo", "Using fallback query without orderBy")
-                    // Fallback: query tanpa orderBy
-                    // Note: Field name di Firestore adalah "completed"
+                    // Fallback: query tanpa orderBy, filter completed=false
                     collection.whereEqualTo("completed", false)
                         .addSnapshotListener { fallbackSnapshot, fallbackError ->
                             if (fallbackError == null) {
@@ -155,6 +153,7 @@ class LostFoundRepository(private val context: Context) {
 
         val query = firestore.collection("items")
             .whereEqualTo("userId", userId)
+            .whereEqualTo("completed", false)
             .orderBy("createdAt", Query.Direction.DESCENDING)
 
         val listenerRegistration = query.addSnapshotListener { snapshot, error ->
@@ -166,6 +165,7 @@ class LostFoundRepository(private val context: Context) {
                     // Fallback: query tanpa orderBy, sort di client
                     firestore.collection("items")
                         .whereEqualTo("userId", userId)
+                        .whereEqualTo("completed", false)
                         .addSnapshotListener { fallbackSnapshot, fallbackError ->
                             if (fallbackError == null) {
                                 val allItems = fallbackSnapshot?.documents?.mapNotNull { doc ->
@@ -307,9 +307,17 @@ class LostFoundRepository(private val context: Context) {
             
             Log.d("LostFoundRepo", "Report saved to LOCAL history: ${item.itemName}")
 
-            // Delete from Firestore (public collection)
-            firestore.collection("items").document(itemId).delete().await()
-            Log.d("LostFoundRepo", "Report deleted from Firestore: $itemId")
+            // UPDATE completed field in Firestore (instead of deleting)
+            // This triggers MODIFIED event in listener, which sends completion notification
+            val completedAt = com.google.firebase.Timestamp.now()
+            firestore.collection("items").document(itemId)
+                .update(mapOf(
+                    "completed" to true,
+                    "completedAt" to completedAt
+                ))
+                .await()
+            
+            Log.d("LostFoundRepo", "Report marked as completed in Firestore: $itemId")
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -419,5 +427,40 @@ class LostFoundRepository(private val context: Context) {
             Result.failure(e)
         }
     }
+    
+    /**
+     * Clean up completed items older than 7 days
+     * This should be called periodically (e.g., on app start)
+     */
+    suspend fun cleanupOldCompletedItems(): Result<Int> {
+        return try {
+            val sevenDaysAgo = Timestamp(Date(System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000)))
+            
+            val snapshot = firestore.collection("items")
+                .whereEqualTo("completed", true)
+                .whereLessThan("completedAt", sevenDaysAgo)
+                .get()
+                .await()
+            
+            var deletedCount = 0
+            snapshot.documents.forEach { doc ->
+                try {
+                    doc.reference.delete().await()
+                    deletedCount++
+                    Log.d("LostFoundRepo", "Deleted old completed item: ${doc.id}")
+                } catch (e: Exception) {
+                    Log.w("LostFoundRepo", "Failed to delete old completed item: ${doc.id}", e)
+                }
+            }
+            
+            if (deletedCount > 0) {
+                Log.d("LostFoundRepo", "Cleanup: Deleted $deletedCount old completed items")
+            }
+            
+            Result.success(deletedCount)
+        } catch (e: Exception) {
+            Log.e("LostFoundRepo", "Error during cleanup: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
 }
-

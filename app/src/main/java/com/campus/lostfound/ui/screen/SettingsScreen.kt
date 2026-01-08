@@ -34,7 +34,8 @@ import com.campus.lostfound.util.WhatsAppUtil
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    viewModel: SettingsViewModel = viewModel()
+    viewModel: SettingsViewModel = viewModel(),
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
@@ -87,6 +88,26 @@ fun SettingsScreen(
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp)
         ) {
+            
+            // ===== SECTION: ACCOUNT =====
+            SettingsSectionHeader(title = "Akun", icon = Icons.Outlined.Person)
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
+                SettingsClickableItem(
+                    icon = Icons.Outlined.AccountCircle,
+                    iconTint = MaterialTheme.colorScheme.primary,
+                    title = "Profile & Akun",
+                    subtitle = "Kelola informasi profile Anda",
+                    onClick = onNavigateToProfile
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
             
             // ===== SECTION: PREFERENSI =====
             SettingsSectionHeader(title = "Tampilan", icon = Icons.Outlined.Tune)

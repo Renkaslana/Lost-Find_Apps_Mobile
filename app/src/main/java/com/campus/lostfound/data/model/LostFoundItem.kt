@@ -8,6 +8,8 @@ data class LostFoundItem(
     @DocumentId
     val id: String = "",
     val userId: String = "",
+    val userName: String = "",              // Nama pelapor (untuk ditampilkan)
+    val userPhotoUrl: String = "",          // Foto pelapor (Google photo atau empty)
     val type: ItemType = ItemType.LOST,
     val itemName: String = "",
     val category: Category = Category.OTHER,
@@ -17,6 +19,7 @@ data class LostFoundItem(
     val whatsappNumber: String = "",
     @PropertyName("completed")
     val isCompleted: Boolean = false,
+    val completedAt: Timestamp? = null,
     val createdAt: Timestamp = Timestamp.now(),
     val imageStoragePath: String = ""
 ) {
@@ -35,14 +38,39 @@ data class LostFoundItem(
     }
 }
 
-enum class ItemType {
-    LOST, FOUND
+enum class ItemType(val displayName: String) {
+    LOST("Hilang"),
+    FOUND("Ditemukan")
 }
 
 enum class Category(val displayName: String) {
     ELECTRONICS("Elektronik"),
-    ACCESSORIES("Aksesoris"),
     DOCUMENTS("Dokumen"),
+    KEYS_ACCESSORIES("Kunci & Aksesoris"),
+    BAGS_WALLETS("Tas & Dompet"),
+    BOOKS_STATIONERY("Buku & Alat Tulis"),
     OTHER("Lainnya")
+}
+
+// Campus Locations Constants
+object CampusLocations {
+    val ALL_LOCATIONS = listOf(
+        "Perpustakaan Pusat",
+        "Parkiran Motor",
+        "Parkiran Mobil",
+        "Kantin Utama",
+        "Kantin Fakultas",
+        "Ruang Kelas",
+        "Laboratorium",
+        "Masjid/Musholla",
+        "Lapangan Olahraga",
+        "Auditorium",
+        "Gedung Rektorat",
+        "Gedung Fakultas",
+        "Area Taman",
+        "Toilet",
+        "Sekitar Gerbang",
+        "Lainnya"
+    )
 }
 

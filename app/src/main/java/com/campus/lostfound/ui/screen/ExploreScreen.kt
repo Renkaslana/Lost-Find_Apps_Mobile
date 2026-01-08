@@ -77,7 +77,9 @@ fun ExploreScreen(
         ExploreCategory("all", "Semua", Icons.Outlined.GridView, MaterialTheme.colorScheme.primary),
         ExploreCategory("electronics", "Elektronik", Icons.Outlined.Laptop, Color(0xFF2196F3)),
         ExploreCategory("documents", "Dokumen", Icons.Outlined.Description, Color(0xFF9C27B0)),
-        ExploreCategory("accessories", "Aksesoris", Icons.Outlined.Watch, Color(0xFFFF9800)),
+        ExploreCategory("keys_accessories", "Kunci & Aksesoris", Icons.Outlined.Key, Color(0xFFFF9800)),
+        ExploreCategory("bags_wallets", "Tas & Dompet", Icons.Outlined.WorkOutline, Color(0xFF795548)),
+        ExploreCategory("books_stationery", "Buku & ATK", Icons.Outlined.MenuBook, Color(0xFF4CAF50)),
         ExploreCategory("other", "Lainnya", Icons.Outlined.Category, Color(0xFF607D8B))
     )
     
@@ -93,46 +95,113 @@ fun ExploreScreen(
     
     val listState = rememberLazyListState()
     
+    // Search state
+    var searchQuery by remember { mutableStateOf("") }
+    
+    // Filter items based on search + selection
+    val displayedItems = remember(filteredItems, searchQuery) {
+        if (searchQuery.isBlank()) {
+            filteredItems
+        } else {
+            filteredItems.filter { item ->
+                item.itemName.contains(searchQuery, ignoreCase = true) ||
+                item.description.contains(searchQuery, ignoreCase = true) ||
+                item.location.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        // Header with gradient
+        // Compact Header
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.06f),
                             MaterialTheme.colorScheme.background
                         )
                     )
                 )
-                .padding(horizontal = 20.dp, vertical = 20.dp)
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "Jelajah",
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Temukan barang berdasarkan kategori",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    text = "Cari & temukan barang",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+        
+        // Search Bar - PRIMARY FEATURE
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            shape = RoundedCornerShape(12.dp),
+            shadowElevation = 2.dp,
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            TextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        "Cari barang, lokasi, atau deskripsi...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                },
+                trailingIcon = if (searchQuery.isNotBlank()) {
+                    {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(
+                                Icons.Filled.Close,
+                                contentDescription = "Clear",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else null,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                )
+            )
         }
         
         // Type filter (Hilang / Ditemukan)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             TypeFilterChip(
@@ -183,7 +252,7 @@ fun ExploreScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "${filteredItems.size} barang ditemukan",
+                text = "${displayedItems.size} barang ditemukan",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -238,13 +307,16 @@ fun ExploreScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                     Text(
-                        text = "Tidak ada barang",
+                        text = if (searchQuery.isNotBlank()) "Tidak ditemukan" else "Tidak ada barang",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Coba ubah filter atau kategori",
+                        text = if (searchQuery.isNotBlank()) 
+                            "Coba kata kunci lain" 
+                        else 
+                            "Coba ubah filter atau kategori",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
@@ -254,11 +326,11 @@ fun ExploreScreen(
             // Items list
             LazyColumn(
                 state = listState,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(start = 0.dp, end = 0.dp, top = 8.dp, bottom = 80.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 itemsIndexed(
-                    items = filteredItems,
+                    items = displayedItems,
                     key = { _, item -> item.id }
                 ) { index, item ->
                     var visible by remember { mutableStateOf(false) }

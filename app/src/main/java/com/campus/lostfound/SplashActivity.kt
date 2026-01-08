@@ -138,23 +138,23 @@ fun SplashScreenContent(onTimeout: () -> Unit) {
     
     LaunchedEffect(Unit) {
         startAnimation = true
-        // show for ~1.1s then fade
-        delay(1100)
+        // show for ~1.0s then fade (faster)
+        delay(1000)
         fadeOut = true
-        delay(300)
+        delay(280)
         onTimeout()
     }
     
     val bgTop = colorResource(id = R.color.splash_opening_top)
     val bgBottom = colorResource(id = R.color.splash_opening_bottom)
 
-    // subtle bobbing animation for the icon
+    // subtle bobbing animation - lighter movement
     val infinite = rememberInfiniteTransition()
     val bobbing by infinite.animateFloat(
-        initialValue = -6f,
-        targetValue = 6f,
+        initialValue = -4f,
+        targetValue = 4f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearOutSlowInEasing),
+            animation = tween(durationMillis = 1400, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "bobbing"
@@ -186,37 +186,37 @@ fun SplashScreenContent(onTimeout: () -> Unit) {
                             .graphicsLayer { translationY = bobbing },
                         contentAlignment = Alignment.Center
                     ) {
-                        // soft glow behind the icon
+                        // Subtle glow - more minimal
                         Box(
                             modifier = Modifier
-                                .size(140.dp)
+                                .size(130.dp)
                                 .background(
-                                    color = colorResource(id = R.color.splash_opening_accent).copy(alpha = 0.12f),
-                                    shape = RoundedCornerShape(28.dp)
+                                    color = colorResource(id = R.color.splash_opening_accent).copy(alpha = 0.08f),
+                                    shape = RoundedCornerShape(24.dp)
                                 )
                         )
 
-                        // actual icon with shadow, scale and alpha
+                        // actual icon - cleaner presentation
                         Image(
                             painter = painterResource(id = R.drawable.splash_opening),
-                            contentDescription = "App Opening Icon",
+                            contentDescription = "App Icon",
                             modifier = Modifier
-                                .size(120.dp)
+                                .size(110.dp)
                                 .scale(logoScale)
                                 .alpha(logoAlpha)
                                 .graphicsLayer { translationY = bobbing }
-                                .shadow(elevation = 10.dp, shape = RoundedCornerShape(28.dp))
                         )
                     }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             
-            // App Name with fade up
+            // App Name - refined typography
             Text(
                 text = "Campus Lost & Found",
-                fontSize = 28.sp,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
+                letterSpacing = (-0.5).sp,
                 modifier = Modifier
                     .alpha(textAlpha)
                     .graphicsLayer {
@@ -226,12 +226,12 @@ fun SplashScreenContent(onTimeout: () -> Unit) {
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Tagline with fade up
+            // Tagline - subtle
             Text(
                 text = "Temukan & Laporkan Barang Hilang",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier
                     .alpha(textAlpha)
                     .graphicsLayer {

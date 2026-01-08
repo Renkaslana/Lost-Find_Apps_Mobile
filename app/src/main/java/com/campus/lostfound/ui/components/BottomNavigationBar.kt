@@ -68,9 +68,9 @@ fun BottomNavigationBar(
         ),
         BottomNavItem(
             screen = Screen.Settings,
-            label = "Setelan",
-            selectedIcon = Icons.Filled.Settings,
-            unselectedIcon = Icons.Outlined.Settings
+            label = "Profil",
+            selectedIcon = Icons.Filled.AccountCircle,
+            unselectedIcon = Icons.Outlined.AccountCircle
         )
     )
     

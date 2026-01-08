@@ -41,6 +41,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.campus.lostfound.service.LocalNotificationService
 import com.campus.lostfound.service.RealtimeNotificationListener
 import com.campus.lostfound.service.OneSignalNotificationService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     
@@ -99,6 +102,10 @@ class MainActivity : ComponentActivity() {
         
         // Start real-time notification listener
         realtimeListener.startListening()
+        
+        // Schedule cleanup of old completed items (runs once on app start)
+        scheduleCompletedItemsCleanup()
+        
         setContent {
             // Collect theme settings
             val context = LocalContext.current
@@ -185,6 +192,36 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "❌ Failed to initialize OneSignal", e)
         }
     }
+    
+    private fun scheduleCompletedItemsCleanup() {
+        // Run cleanup in background coroutine
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                // Check if we've run cleanup recently (once per day)
+                val prefs = getSharedPreferences("cleanup_prefs", Context.MODE_PRIVATE)
+                val lastCleanup = prefs.getLong("last_cleanup", 0)
+                val oneDayAgo = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+                
+                if (lastCleanup < oneDayAgo) {
+                    val repository = com.campus.lostfound.data.repository.LostFoundRepository(this@MainActivity)
+                    val result = repository.cleanupOldCompletedItems()
+                    
+                    result.onSuccess { deletedCount ->
+                        if (deletedCount > 0) {
+                            Log.d("MainActivity", "✅ Cleanup: Deleted $deletedCount old completed items")
+                        }
+                    }.onFailure { error ->
+                        Log.w("MainActivity", "Cleanup failed: ${error.message}")
+                    }
+                    
+                    // Update last cleanup time
+                    prefs.edit().putLong("last_cleanup", System.currentTimeMillis()).apply()
+                }
+            } catch (e: Exception) {
+                Log.w("MainActivity", "Cleanup task failed", e)
+            }
+        }
+    }
 }
 
 @Composable
@@ -193,6 +230,21 @@ fun MainScreen() {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: Screen.Home.route
+    
+    // Check authentication and guest mode
+    val settingsRepository = remember { SettingsRepository(context) }
+    val isGuestMode by settingsRepository.isGuestModeFlow.collectAsState(initial = false)
+    val auth = remember { com.google.firebase.auth.FirebaseAuth.getInstance() }
+    val isAuthenticated = auth.currentUser != null
+    
+    // Redirect to login if not authenticated and not in guest mode
+    LaunchedEffect(isAuthenticated, isGuestMode) {
+        if (!isAuthenticated && !isGuestMode && currentRoute != Screen.Login.route && currentRoute != Screen.Register.route) {
+            navController.navigate(Screen.Login.route) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
     
     // Handle pending navigation from notification intent
     LaunchedEffect(Unit) {

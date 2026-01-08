@@ -1,8 +1,19 @@
 package com.campus.lostfound.ui.screen
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,16 +21,35 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.delay
+import kotlin.math.sin
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -28,11 +58,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.campus.lostfound.data.model.Category
 import com.campus.lostfound.data.model.ItemType
+import com.campus.lostfound.data.repository.UserRepository
 import com.campus.lostfound.ui.viewmodel.AddReportViewModel
 import com.campus.lostfound.ui.viewmodel.AddReportUiState
 import com.campus.lostfound.util.WhatsAppUtil
 import com.campus.lostfound.util.rememberImagePicker
 import com.campus.lostfound.util.ImagePickerLauncher
+import kotlinx.coroutines.delay
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +73,68 @@ fun AddReportScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    
+    var showSuccessDialog by remember { mutableStateOf(false) }
+    
+    // Check guest mode
+    val settingsRepository = remember { com.campus.lostfound.data.SettingsRepository(context) }
+    val isGuestMode by settingsRepository.isGuestModeFlow.collectAsState(initial = false)
+    
+    // Show guest restriction dialog if in guest mode
+    if (isGuestMode) {
+        AlertDialog(
+            onDismissRequest = onNavigateBack,
+            icon = {
+                Icon(
+                    Icons.Outlined.Lock,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = {
+                Text(
+                    "Fitur Terbatas",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Anda sedang dalam mode tamu. Untuk membuat laporan, silakan login terlebih dahulu.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Dengan login, Anda dapat:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(start = 8.dp)
+                    ) {
+                        Text("• Membuat laporan barang hilang/ditemukan", style = MaterialTheme.typography.bodySmall)
+                        Text("• Mengelola profil Anda", style = MaterialTheme.typography.bodySmall)
+                        Text("• Menerima notifikasi terbaru", style = MaterialTheme.typography.bodySmall)
+                        Text("• Tracking laporan Anda", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = onNavigateBack) {
+                    Text("Kembali")
+                }
+            },
+            shape = RoundedCornerShape(16.dp)
+        )
+        return
+    }
+    
     val viewModel: AddReportViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -51,9 +146,22 @@ fun AddReportScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     
-    // Step-based UI state
-    var currentStep by remember { mutableIntStateOf(1) }
-    val totalSteps = 3
+    // User profile phone state
+    val userRepository = remember { UserRepository() }
+    var userProfilePhone by remember { mutableStateOf("") }
+    var useProfilePhone by remember { mutableStateOf(false) }
+    
+    // Load user profile phone
+    LaunchedEffect(Unit) {
+        userRepository.getCurrentUserProfile().onSuccess { user ->
+            userProfilePhone = user.phoneNumber
+            // Auto-use profile phone if available and current phone is empty
+            if (userProfilePhone.isNotEmpty() && uiState.whatsappNumber.isBlank()) {
+                useProfilePhone = true
+                viewModel.setWhatsAppNumber(userProfilePhone)
+            }
+        }
+    }
     
     var showImageSourceDialog by remember { mutableStateOf(false) }
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
@@ -72,38 +180,26 @@ fun AddReportScreen(
     
     Scaffold(
         topBar = {
-            Column {
-                TopAppBar(
-                    title = { Text("Tambah Laporan", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                        }
-                    }
-                )
-                // Progress Indicator
-                LinearProgressIndicator(
-                    progress = currentStep.toFloat() / totalSteps,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.secondary,
-                    trackColor = MaterialTheme.colorScheme.surface
-                )
-                // Step Indicators
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    repeat(totalSteps) { step ->
-                        StepIndicator(
-                            step = step + 1,
-                            isActive = step + 1 == currentStep,
-                            isCompleted = step + 1 < currentStep
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Buat Laporan", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                        Text(
+                            text = if (uiState.itemType == ItemType.LOST) "Laporkan Barang Hilang" else "Laporkan Barang Ditemukan",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                }
-            }
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
         }
     ) { paddingValues ->
         Column(
@@ -112,547 +208,166 @@ fun AddReportScreen(
                 .padding(paddingValues)
                 .verticalScroll(scrollState)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Error Message
-            uiState.errorMessage?.let { error ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Error,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            text = error,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-            }
-            
-            // Step Content
-            when (currentStep) {
-                1 -> Step1Content(
-                    uiState = uiState,
-                    viewModel = viewModel
-                )
-                2 -> Step2Content(
-                    uiState = uiState,
-                    viewModel = viewModel
-                )
-                3 -> Step3Content(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    showImageSourceDialog = showImageSourceDialog,
-                    onShowImageSourceDialog = { showImageSourceDialog = it },
-                    imagePicker = imagePicker,
-                    tempImageUri = tempImageUri,
-                    onTempImageUriChange = { tempImageUri = it }
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Navigation Buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Animated Error Message
+            AnimatedVisibility(
+                visible = uiState.errorMessage != null,
+                enter = slideInVertically(
+                    initialOffsetY = { -it },
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                ) + fadeIn(),
+                exit = slideOutVertically() + fadeOut()
             ) {
-                if (currentStep > 1) {
-                    OutlinedButton(
-                        onClick = { currentStep-- },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Kembali")
-                    }
-                    
-                    Button(
-                        onClick = {
-                            if (currentStep < totalSteps) {
-                                currentStep++
-                            } else {
-                                viewModel.submitReport(onNavigateBack)
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
+                uiState.errorMessage?.let { error ->
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
                         ),
-                        shape = RoundedCornerShape(28.dp),
-                        enabled = when (currentStep) {
-                            1 -> uiState.itemName.isNotBlank() && uiState.location.isNotBlank()
-                            2 -> {
-                                val isPhoneValid = uiState.whatsappNumber.isBlank() || 
-                                                  WhatsAppUtil.isValidIndonesianPhoneNumber(uiState.whatsappNumber)
-                                uiState.whatsappNumber.isNotBlank() && isPhoneValid
-                            }
-                            else -> !uiState.isLoading
-                        }
-                    ) {
-                        if (currentStep < totalSteps) {
-                            Text("Lanjut")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
-                        } else {
-                            if (uiState.isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onSecondary,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Mengirim...")
-                            } else {
-                                Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Kirim Laporan")
-                            }
-                        }
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            if (currentStep < totalSteps) {
-                                currentStep++
-                            }
-                        },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = uiState.itemName.isNotBlank() && uiState.location.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary,
-                            contentColor = MaterialTheme.colorScheme.onSecondary
-                        ),
-                        shape = RoundedCornerShape(28.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                     ) {
-                        Text("Lanjut")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(Icons.Default.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
-            
-            OutlinedButton(
-                onClick = onNavigateBack,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Batal")
-            }
-        }
-    }
-    
-
-}
-
-// Step 1: Info Barang
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun Step1Content(
-    uiState: AddReportUiState,
-    viewModel: AddReportViewModel
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Informasi Barang",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        // Item Type Selection
-        Text(
-            text = "Jenis Laporan *",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            FilterChip(
-                selected = uiState.itemType == ItemType.LOST,
-                onClick = { viewModel.setItemType(ItemType.LOST) },
-                label = { Text("Barang Hilang") },
-                modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-                selected = uiState.itemType == ItemType.FOUND,
-                onClick = { viewModel.setItemType(ItemType.FOUND) },
-                label = { Text("Barang Ditemukan") },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        
-        // Item Name
-        OutlinedTextField(
-            value = uiState.itemName,
-            onValueChange = { value: String -> viewModel.setItemName(value) },
-            label = { Text("Nama Barang *") },
-            placeholder = { Text("Contoh: Tas Hitam, HP Samsung") },
-            leadingIcon = {
-                Icon(Icons.Default.Edit, contentDescription = null)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium,
-            isError = uiState.itemName.isBlank(),
-            supportingText = {
-                if (uiState.itemName.isBlank()) {
-                    Text(
-                        text = "Nama barang wajib diisi",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                } else {
-                    Text("Contoh: Tas Hitam, HP Samsung")
-                }
-            }
-        )
-        
-        // Category
-        var expanded by remember { mutableStateOf(false) }
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
-            OutlinedTextField(
-                value = uiState.category.displayName,
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("Kategori *") },
-                leadingIcon = {
-                    Icon(Icons.Default.Category, contentDescription = null)
-                },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-                shape = MaterialTheme.shapes.medium
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                Category.values().forEach { category ->
-                    DropdownMenuItem(
-                        text = { Text(category.displayName) },
-                        onClick = {
-                            viewModel.setCategory(category)
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
-        
-        // Location
-        OutlinedTextField(
-            value = uiState.location,
-            onValueChange = { value: String -> viewModel.setLocation(value) },
-            label = { Text("Lokasi *") },
-            placeholder = { Text("Contoh: Perpustakaan Lt. 2") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            leadingIcon = {
-                Icon(Icons.Default.LocationOn, contentDescription = null)
-            },
-            shape = MaterialTheme.shapes.medium,
-            isError = uiState.location.isBlank(),
-            supportingText = {
-                if (uiState.location.isBlank()) {
-                    Text(
-                        text = "Lokasi wajib diisi",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                } else {
-                    Text("Contoh: Perpustakaan Lt. 2")
-                }
-            }
-        )
-    }
-}
-
-// Step 2: Kontak & Deskripsi
-@Composable
-private fun Step2Content(
-    uiState: AddReportUiState,
-    viewModel: AddReportViewModel
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Kontak & Deskripsi",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        // WhatsApp Number
-        val isPhoneValid = uiState.whatsappNumber.isBlank() || 
-                          WhatsAppUtil.isValidIndonesianPhoneNumber(uiState.whatsappNumber)
-        val formattedPreview = if (uiState.whatsappNumber.isNotBlank() && isPhoneValid) {
-            WhatsAppUtil.formatPhoneNumber(uiState.whatsappNumber)
-        } else {
-            null
-        }
-        
-        OutlinedTextField(
-            value = uiState.whatsappNumber,
-            onValueChange = { value: String -> viewModel.setWhatsAppNumber(value) },
-            label = { Text("Nomor WhatsApp *") },
-            placeholder = { Text("08123456789 atau 628123456789") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            leadingIcon = {
-                Icon(Icons.Default.Phone, contentDescription = null)
-            },
-            shape = MaterialTheme.shapes.medium,
-            isError = !isPhoneValid && uiState.whatsappNumber.isNotBlank(),
-            supportingText = {
-                Column {
-                    if (!isPhoneValid && uiState.whatsappNumber.isNotBlank()) {
-                        Text(
-                            text = "Format nomor tidak valid",
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    } else if (formattedPreview != null && formattedPreview != uiState.whatsappNumber) {
-                        Text(
-                            text = "Akan dikonversi ke: $formattedPreview",
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    } else {
-                        Text(
-                            text = "Contoh: 08123456789 atau 628123456789",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
-        )
-        
-        // Description
-        OutlinedTextField(
-            value = uiState.description,
-            onValueChange = { value: String -> viewModel.setDescription(value) },
-            label = { Text("Deskripsi (Opsional)") },
-            placeholder = { Text("Tambahkan detail seperti ciri khusus, warna, dll...") },
-            leadingIcon = {
-                Icon(Icons.Default.Description, contentDescription = null)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-            maxLines = 5,
-            shape = MaterialTheme.shapes.medium,
-            supportingText = {
-                Text(
-                    text = "${uiState.description.length}/500",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.End
-                )
-            }
-        )
-    }
-}
-
-// Step 3: Upload Foto
-@Composable
-private fun Step3Content(
-    uiState: AddReportUiState,
-    viewModel: AddReportViewModel,
-    showImageSourceDialog: Boolean,
-    onShowImageSourceDialog: (Boolean) -> Unit,
-    imagePicker: ImagePickerLauncher,
-    tempImageUri: Uri?,
-    onTempImageUriChange: (Uri?) -> Unit
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Foto Barang",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Text(
-            text = "Tambahkan foto untuk memudahkan pencarian",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        
-        if (uiState.imageUri != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Box {
-                    Image(
-                        painter = rememberAsyncImagePainter(uiState.imageUri),
-                        contentDescription = "Selected image",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentScale = ContentScale.Crop
-                    )
-                    Surface(
-                        modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.errorContainer
-                    ) {
-                        IconButton(
-                            onClick = {
-                                viewModel.setImageUri(null)
-                                onTempImageUriChange(null)
-                            }
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Icon(
-                                Icons.Default.Close,
-                                contentDescription = "Remove image",
-                                tint = MaterialTheme.colorScheme.error
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
                 }
             }
-        } else {
-            OutlinedCard(
+            
+            // Single Form Content
+            SinglePageFormContent(
+                uiState = uiState,
+                viewModel = viewModel,
+                userProfilePhone = userProfilePhone,
+                useProfilePhone = useProfilePhone,
+                onUseProfilePhoneChange = { useProfilePhone = it },
+                showImageSourceDialog = showImageSourceDialog,
+                onShowImageSourceDialog = { showImageSourceDialog = it },
+                imagePicker = imagePicker,
+                tempImageUri = tempImageUri,
+                onTempImageUriChange = { tempImageUri = it }
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Submit Button with Gradient & Haptic Feedback
+            val buttonScale by animateFloatAsState(
+                targetValue = if (uiState.isLoading) 0.95f else 1f,
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                label = "buttonScale"
+            )
+            
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.submitReport {
+                        showSuccessDialog = true
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
-                shape = RoundedCornerShape(16.dp)
+                    .height(56.dp)
+                    .scale(buttonScale),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = RoundedCornerShape(16.dp),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                ),
+                enabled = uiState.itemName.isNotBlank() && 
+                         uiState.location.isNotBlank() &&
+                         uiState.whatsappNumber.isNotBlank() &&
+                         WhatsAppUtil.isValidIndonesianPhoneNumber(uiState.whatsappNumber) &&
+                         uiState.imageUri != null && 
+                         !uiState.isLoading
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable { onShowImageSourceDialog(true) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                if (uiState.isLoading) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Default.PhotoCamera,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
                         )
-                        Text(
-                            text = "Ambil atau Pilih Foto",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Ketuk untuk memilih foto",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text("Mengirim...", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Text("Kirim Laporan", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
+            
+            Spacer(modifier = Modifier.height(8.dp))
         }
+    }
+    
+    // Success Celebration Dialog
+    if (showSuccessDialog) {
+        SuccessCelebrationDialog(
+            onDismiss = {
+                showSuccessDialog = false
+                onNavigateBack()
+            }
+        )
     }
     
     // Image Source Dialog
     if (showImageSourceDialog) {
         AlertDialog(
-            onDismissRequest = { onShowImageSourceDialog(false) },
-            title = { 
-                Text(
-                    "Pilih Sumber Foto",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                ) 
-            },
+            onDismissRequest = { showImageSourceDialog = false },
+            title = { Text("Pilih Sumber Gambar", fontWeight = FontWeight.Bold) },
             text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Gallery Option
-                    Surface(
-                        onClick = {
-                            onShowImageSourceDialog(false)
-                            imagePicker.pickFromGallery()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Photo, 
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                "Pilih dari Galeri",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Camera Option
-                    Surface(
-                        onClick = {
-                            onShowImageSourceDialog(false)
-                            imagePicker.takePhoto()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                Icons.Default.PhotoCamera, 
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                "Ambil Foto",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Pilih dari mana Anda ingin mengambil foto:")
                 }
             },
             confirmButton = {
-                TextButton(onClick = { onShowImageSourceDialog(false) }) {
-                    Text("Batal")
+                TextButton(
+                    onClick = {
+                        imagePicker.takePhoto()
+                        showImageSourceDialog = false
+                    }
+                ) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Kamera")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        imagePicker.pickFromGallery()
+                        showImageSourceDialog = false
+                    }
+                ) {
+                    Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Galeri")
                 }
             },
             shape = RoundedCornerShape(16.dp)
@@ -660,46 +375,220 @@ private fun Step3Content(
     }
 }
 
+// Single Page Form Content
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StepIndicator(
-    step: Int,
-    isActive: Boolean,
-    isCompleted: Boolean
+private fun SinglePageFormContent(
+    uiState: AddReportUiState,
+    viewModel: AddReportViewModel,
+    userProfilePhone: String,
+    useProfilePhone: Boolean,
+    onUseProfilePhoneChange: (Boolean) -> Unit,
+    showImageSourceDialog: Boolean,
+    onShowImageSourceDialog: (Boolean) -> Unit,
+    imagePicker: ImagePickerLauncher,
+    tempImageUri: Uri?,
+    onTempImageUriChange: (Uri?) -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Surface(
-            shape = CircleShape,
-            color = when {
-                isCompleted -> MaterialTheme.colorScheme.primary
-                isActive -> MaterialTheme.colorScheme.primary
-                else -> MaterialTheme.colorScheme.surfaceVariant
-            },
-            modifier = Modifier.size(32.dp)
+        // SECTION 1: Enhanced Photo Upload Zone
+        EnhancedPhotoUploadCard(
+            uiState = uiState,
+            viewModel = viewModel,
+            imagePicker = imagePicker,
+            onTempImageUriChange = onTempImageUriChange
+        )
+        
+        // SECTION 2: Info Barang
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize()
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (isCompleted) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Icon(
-                        Icons.Default.Check,
+                        Icons.Default.Inventory,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
                     )
-                } else {
                     Text(
-                        text = step.toString(),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Informasi Barang",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
+                
+                // Jenis Laporan
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FilterChip(
+                        selected = uiState.itemType == ItemType.LOST,
+                        onClick = { viewModel.setItemType(ItemType.LOST) },
+                        label = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Barang Hilang")
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    FilterChip(
+                        selected = uiState.itemType == ItemType.FOUND,
+                        onClick = { viewModel.setItemType(ItemType.FOUND) },
+                        label = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Barang Ditemukan")
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                // Nama Barang
+                OutlinedTextField(
+                    value = uiState.itemName,
+                    onValueChange = { viewModel.setItemName(it) },
+                    label = { Text("Nama Barang *") },
+                    placeholder = { Text("e.g. iPhone 13 Pro") },
+                    leadingIcon = { Icon(Icons.Default.Edit, null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    isError = uiState.itemName.isBlank()
+                )
+                
+                // Visual Category Selector
+                VisualCategorySelector(
+                    selectedCategory = uiState.category,
+                    onCategorySelected = { viewModel.setCategory(it) }
+                )
+                
+                // Interactive Location Picker
+                InteractiveLocationPicker(
+                    selectedLocation = uiState.location,
+                    onLocationSelected = { viewModel.setLocation(it) }
+                )
+                
+                // Enhanced Description Editor
+                EnhancedDescriptionEditor(
+                    description = uiState.description,
+                    onDescriptionChange = { viewModel.setDescription(it) },
+                    maxLength = 500
+                )
+            }
+        }
+        
+        // SECTION 3: Contact Number
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Phone,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Text(
+                        text = "Nomor Kontak",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                
+                // Use Profile Phone Option
+                if (userProfilePhone.isNotEmpty()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            val newValue = !useProfilePhone
+                            onUseProfilePhoneChange(newValue)
+                            if (newValue) {
+                                viewModel.setWhatsAppNumber(userProfilePhone)
+                            } else {
+                                viewModel.setWhatsAppNumber("")
+                            }
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = useProfilePhone,
+                                onCheckedChange = null
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Use number from profile",
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    userProfilePhone,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // WhatsApp Number
+                val isPhoneValid = uiState.whatsappNumber.isBlank() || 
+                                  WhatsAppUtil.isValidIndonesianPhoneNumber(uiState.whatsappNumber)
+                
+                OutlinedTextField(
+                    value = uiState.whatsappNumber,
+                    onValueChange = { 
+                        val clean = it.filter { ch -> ch.isDigit() }
+                        viewModel.setWhatsAppNumber(clean)
+                        if (useProfilePhone && clean != userProfilePhone) {
+                            onUseProfilePhoneChange(false)
+                        }
+                    },
+                    label = { Text("Contact Number *") },
+                    placeholder = { Text("+62 812-3456-7890") },
+                    leadingIcon = { Icon(Icons.Default.Phone, null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !useProfilePhone,
+                    shape = RoundedCornerShape(12.dp),
+                    isError = !isPhoneValid,
+                    supportingText = {
+                        if (!isPhoneValid) {
+                            Text("⚠️ Invalid phone format", color = MaterialTheme.colorScheme.error)
+                        } else {
+                            Text("💡 This will be shown to users who want to contact you")
+                        }
+                    }
+                )
             }
         }
     }
 }
-

@@ -112,6 +112,9 @@ class ActivityViewModel(
             result.fold(
                 onSuccess = {
                     _isLoading.value = false
+                    // Reload both active reports and history to reflect changes immediately
+                    loadMyReports()
+                    loadMyHistory()
                     onSuccess()
                 },
                 onFailure = { error ->

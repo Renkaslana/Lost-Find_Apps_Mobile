@@ -50,9 +50,9 @@ fun ItemCard(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     
-    // Premium elevation animation - lebih tinggi untuk premium feel
+    // Subtle elevation animation
     val elevation by animateFloatAsState(
-        targetValue = if (isPressed) 8f else 4f, // Increased baseline elevation
+        targetValue = if (isPressed) 4f else 2f,
         animationSpec = tween(durationMillis = 150),
         label = "elevation"
     )
@@ -67,20 +67,14 @@ fun ItemCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp) // Reduced vertical padding for tighter spacing
-            .scale(scale) // Add scale animation
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .scale(scale)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null, // Custom ripple handled by scale
+                indication = rememberRipple(),
                 onClick = { onCardClick?.invoke() }
-            )
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
-                )
             ),
-        shape = RoundedCornerShape(20.dp), // Increased corner radius for modern look
+        shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = elevation.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -89,188 +83,226 @@ fun ItemCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Header with status badge and actions
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Status Badge - More premium design
-                Surface(
-                    color = if (item.type == ItemType.LOST) LostRed else FoundGreen,
-                    shape = RoundedCornerShape(12.dp),
-                    shadowElevation = 1.dp
-                ) {
-                    Text(
-                        text = if (item.type == ItemType.LOST) "Hilang" else "Ditemukan",
-                        color = Color.White, // White text on colored background for better contrast
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-                
-                // Time stamp with icon
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.AccessTime,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = item.getTimeAgo(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            // Main content area
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                // Image section - improved styling
-                if (item.imageUrl.isNotEmpty()) {
-                    if (ImageConverter.isBase64Image(item.imageUrl)) {
-                        val bitmapResult = remember(item.imageUrl) {
-                            runCatching {
-                                val base64String = ImageConverter.extractBase64(item.imageUrl)
-                                val imageBytes = android.util.Base64.decode(base64String, android.util.Base64.DEFAULT)
-                                android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-                            }
+            // Image section - Full width dengan aspect ratio 16:9
+            if (item.imageUrl.isNotEmpty()) {
+                if (ImageConverter.isBase64Image(item.imageUrl)) {
+                    val bitmapResult = remember(item.imageUrl) {
+                        runCatching {
+                            val base64String = ImageConverter.extractBase64(item.imageUrl)
+                            val imageBytes = android.util.Base64.decode(base64String, android.util.Base64.DEFAULT)
+                            android.graphics.BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
                         }
-                        
-                        bitmapResult.getOrNull()?.let { bitmap ->
-                            Box(
-                                modifier = Modifier
-                                    .size(80.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                            ) {
-                                Image(
-                                    bitmap = bitmap.asImageBitmap(),
-                                    contentDescription = item.itemName,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                                // Subtle overlay for better readability if needed
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(
-                                            Color.Black.copy(alpha = 0.05f),
-                                            RoundedCornerShape(16.dp)
-                                        )
-                                )
-                            }
-                        } ?: PremiumImagePlaceholder()
-                    } else {
+                    }
+                    
+                    bitmapResult.getOrNull()?.let { bitmap ->
                         Box(
                             modifier = Modifier
-                                .size(80.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .fillMaxWidth()
+                                .aspectRatio(16f / 9f)
+                                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                         ) {
                             Image(
-                                painter = rememberAsyncImagePainter(item.imageUrl),
+                                bitmap = bitmap.asImageBitmap(),
                                 contentDescription = item.itemName,
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
+                            
+                            // Status Badge Overlay - kiri atas
+                            Surface(
+                                color = if (item.type == ItemType.LOST) LostRed else FoundGreen,
+                                shape = RoundedCornerShape(bottomEnd = 16.dp, topStart = 20.dp),
+                                modifier = Modifier.align(Alignment.TopStart)
+                            ) {
+                                Text(
+                                    text = if (item.type == ItemType.LOST) "Hilang" else "Ditemukan",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    } ?: LargeImagePlaceholder(item.type)
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    ) {
+                        Image(
+                            painter = rememberAsyncImagePainter(item.imageUrl),
+                            contentDescription = item.itemName,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        
+                        // Status Badge Overlay
+                        Surface(
+                            color = if (item.type == ItemType.LOST) LostRed else FoundGreen,
+                            shape = RoundedCornerShape(bottomEnd = 16.dp, topStart = 20.dp),
+                            modifier = Modifier.align(Alignment.TopStart)
+                        ) {
+                            Text(
+                                text = if (item.type == ItemType.LOST) "Hilang" else "Ditemukan",
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
                         }
                     }
-                } else {
-                    PremiumImagePlaceholder()
                 }
-                
-                // Content section - better hierarchy
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Item name - prominent typography
-                    Text(
-                        text = item.itemName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        minLines = 1
-                    )
-                    
-                    // Location with better icon treatment
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.LocationOn,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = item.location,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                    }
-                    
-                    // Category if needed
-                    Text(
-                        text = item.category.displayName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
+            } else {
+                LargeImagePlaceholder(item.type)
             }
             
-            // Action button - full-width design
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = onContactClick,
+            // Content section - Info detail
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                shape = RoundedCornerShape(16.dp),
-                contentPadding = PaddingValues(vertical = 16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Phone,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                // Item name - prominent
                 Text(
-                    "Hubungi",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Medium
+                    text = item.itemName,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
+                
+                // Category chip
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = item.category.displayName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
+                }
+                
+                // Location
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = item.location,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+                
+                // Divider
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+                
+                // User info (Pelapor) dan Time
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // User info
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // User photo atau icon
+                        if (item.userPhotoUrl.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                            ) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(item.userPhotoUrl),
+                                    contentDescription = "Foto ${item.userName}",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(50))
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        
+                        Column {
+                            Text(
+                                text = "Dilaporkan oleh",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                            Text(
+                                text = item.userName.ifEmpty { "Pengguna" },
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    
+                    // Time ago
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AccessTime,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = item.getTimeAgo(),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PremiumImagePlaceholder() {
+private fun CompactImagePlaceholder() {
     Box(
         modifier = Modifier
-            .size(80.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .size(86.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center
     ) {
@@ -278,7 +310,44 @@ private fun PremiumImagePlaceholder() {
             imageVector = Icons.Filled.Image,
             contentDescription = "No image",
             modifier = Modifier.size(32.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
     }
 }
+
+@Composable
+private fun LargeImagePlaceholder(itemType: ItemType) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 9f)
+            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Image,
+            contentDescription = "No image",
+            modifier = Modifier
+                .size(64.dp)
+                .align(Alignment.Center),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+        )
+        
+        // Status Badge Overlay
+        Surface(
+            color = if (itemType == ItemType.LOST) LostRed else FoundGreen,
+            shape = RoundedCornerShape(bottomEnd = 16.dp, topStart = 20.dp),
+            modifier = Modifier.align(Alignment.TopStart)
+        ) {
+            Text(
+                text = if (itemType == ItemType.LOST) "Hilang" else "Ditemukan",
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
+    }
+}
+
+// Placeholder removed - using CompactImagePlaceholder instead

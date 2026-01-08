@@ -4,6 +4,8 @@ import android.graphics.BitmapFactory
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,7 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +34,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.campus.lostfound.data.model.ItemType
 import com.campus.lostfound.data.model.LostFoundItem
 import com.campus.lostfound.data.repository.LostFoundRepository
+import com.campus.lostfound.ui.components.SmallUserAvatar
 import com.campus.lostfound.ui.theme.FoundGreen
 import com.campus.lostfound.ui.theme.FoundGreenLight
 import com.campus.lostfound.ui.theme.LostRed
@@ -48,7 +54,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 fun DetailScreen(
     itemId: String,
     onNavigateBack: () -> Unit,
-    onNavigateToEdit: ((String) -> Unit)? = null
+    onNavigateToEdit: ((String) -> Unit)? = null,
+    onNavigateToPublicProfile: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -68,6 +75,7 @@ fun DetailScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCompleteDialog by remember { mutableStateOf(false) }
+    var showFullscreenImage by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
 
@@ -235,7 +243,9 @@ fun DetailScreen(
                                 Image(
                                     bitmap = bitmap.asImageBitmap(),
                                     contentDescription = item!!.itemName,
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clickable { showFullscreenImage = true },
                                     contentScale = ContentScale.Crop
                                 )
                             } ?: ImagePlaceholder(modifier = Modifier.fillMaxSize())
@@ -243,7 +253,9 @@ fun DetailScreen(
                             Image(
                                 painter = rememberAsyncImagePainter(item!!.imageUrl),
                                 contentDescription = item!!.itemName,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { showFullscreenImage = true },
                                 contentScale = ContentScale.Crop
                             )
                         }
@@ -280,6 +292,45 @@ fun DetailScreen(
                         fontWeight = FontWeight.Bold
                     )
 
+                    // Banner Info untuk Completed Items
+                    if (item!!.isCompleted) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = FoundGreen.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.CheckCircle,
+                                    contentDescription = null,
+                                    tint = FoundGreen,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = "Laporan Selesai",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = FoundGreen
+                                    )
+                                    Text(
+                                        text = "Barang ini telah dikembalikan ke pemiliknya",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -314,6 +365,51 @@ fun DetailScreen(
                                 label = "Waktu",
                                 value = item!!.getTimeAgo()
                             )
+                        }
+                    }
+
+                    // Reporter Info Card
+                    if (!item!!.userName.isNullOrEmpty() && !item!!.userId.isNullOrEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onNavigateToPublicProfile?.invoke(item!!.userId)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                SmallUserAvatar(
+                                    photoUrl = item!!.userPhotoUrl,
+                                    name = item!!.userName ?: ""
+                                )
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = "Dilaporkan oleh",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = item!!.userName ?: "",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                Icon(
+                                    Icons.Filled.ChevronRight,
+                                    contentDescription = "View Profile",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
 
@@ -420,6 +516,147 @@ fun DetailScreen(
             }
         )
     }
+
+    // Fullscreen Image Viewer
+    if (showFullscreenImage && item != null && item!!.imageUrl.isNotEmpty()) {
+        FullscreenImageViewer(
+            imageUrl = item!!.imageUrl,
+            itemName = item!!.itemName,
+            onDismiss = { showFullscreenImage = false }
+        )
+    }
+}
+
+@Composable
+private fun FullscreenImageViewer(
+    imageUrl: String,
+    itemName: String,
+    onDismiss: () -> Unit
+) {
+    var scale by remember { mutableStateOf(1f) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    scale = (scale * zoom).coerceIn(1f, 5f)
+                    if (scale > 1f) {
+                        offsetX += pan.x
+                        offsetY += pan.y
+                    } else {
+                        offsetX = 0f
+                        offsetY = 0f
+                    }
+                }
+            }
+    ) {
+        // Image
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            if (ImageConverter.isBase64Image(imageUrl)) {
+                val bitmapResult = remember(imageUrl) {
+                    runCatching {
+                        val base64String = ImageConverter.extractBase64(imageUrl)
+                        val imageBytes = android.util.Base64.decode(base64String, android.util.Base64.DEFAULT)
+                        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+                    }
+                }
+
+                bitmapResult.getOrNull()?.let { bitmap ->
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = itemName,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                translationX = offsetX,
+                                translationY = offsetY
+                            ),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            } else {
+                Image(
+                    painter = rememberAsyncImagePainter(imageUrl),
+                    contentDescription = itemName,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer(
+                            scaleX = scale,
+                            scaleY = scale,
+                            translationX = offsetX,
+                            translationY = offsetY
+                        ),
+                    contentScale = ContentScale.Fit
+                )
+            }
+        }
+
+        // Close button
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .size(48.dp),
+            shape = androidx.compose.foundation.shape.CircleShape,
+            color = Color.Black.copy(alpha = 0.6f)
+        ) {
+            IconButton(
+                onClick = onDismiss
+            ) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Close",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        // Zoom indicator
+        if (scale > 1f) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Black.copy(alpha = 0.6f)
+            ) {
+                Text(
+                    text = "${(scale * 100).toInt()}%",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+
+        // Hint text (only at normal scale)
+        if (scale == 1f) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(16.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = Color.Black.copy(alpha = 0.6f)
+            ) {
+                Text(
+                    text = "Pinch untuk zoom",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -474,6 +711,7 @@ class DetailViewModel(
     private val itemId: String
 ) : ViewModel() {
     private val repository = LostFoundRepository(context)
+    private val localHistoryRepository = com.campus.lostfound.data.LocalHistoryRepository(context)
     
     private val _item = MutableStateFlow<LostFoundItem?>(null)
     val item: StateFlow<LostFoundItem?> = _item.asStateFlow()
@@ -496,12 +734,29 @@ class DetailViewModel(
             _isLoading.value = true
             _errorMessage.value = null
             
+            // Hybrid System: Try Firestore first, then fallback to Local Storage
             val result = repository.getItemById(itemId)
-            result.onSuccess { loadedItem ->
+            
+            if (result.isSuccess) {
+                // Found in Firestore (within 7 days grace period)
+                val loadedItem = result.getOrNull()!!
                 _item.value = loadedItem
                 _isOwner.value = loadedItem.userId == repository.getCurrentUserId()
-            }.onFailure { error ->
-                _errorMessage.value = error.message ?: "Gagal memuat laporan"
+                android.util.Log.d("DetailViewModel", "✅ Item loaded from Firestore: ${loadedItem.itemName}")
+            } else {
+                // Not found in Firestore, try Local Storage (after 7 days cleanup)
+                android.util.Log.d("DetailViewModel", "⚠️ Item not in Firestore, checking local storage...")
+                
+                val localItem = localHistoryRepository.getHistoryById(itemId)
+                if (localItem != null) {
+                    _item.value = localItem.item
+                    _isOwner.value = true // If in local history, user is the owner
+                    android.util.Log.d("DetailViewModel", "✅ Item loaded from Local Storage: ${localItem.item.itemName}")
+                } else {
+                    // Not found anywhere
+                    _errorMessage.value = "Laporan tidak ditemukan"
+                    android.util.Log.e("DetailViewModel", "❌ Item not found in Firestore or Local Storage")
+                }
             }
             
             _isLoading.value = false

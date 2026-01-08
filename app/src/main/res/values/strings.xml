@@ -2,6 +2,9 @@
 <resources>
     <string name="app_name">Campus Lost &amp; Found</string>
     
+    <!-- Web Client ID untuk Google Sign-In -->
+    <string name="default_web_client_id">608664009990-1tv3e17992p204tmhmhctav126kj28ov.apps.googleusercontent.com</string>
+    
     <!-- Navigation -->
     <string name="nav_home">Beranda</string>
     <string name="nav_add">Tambah</string>

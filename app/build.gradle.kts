@@ -78,11 +78,14 @@ dependencies {
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-firestore")
-    // Firebase Storage tidak diperlukan - menggunakan Base64 encoding
-    // implementation("com.google.firebase:firebase-storage")
+    // Firebase Storage untuk profile photos
+    implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.google.firebase:firebase-auth")
     // Firebase Cloud Messaging
     implementation("com.google.firebase:firebase-messaging-ktx:23.3.0")
+    
+    // Google Sign-In
+    implementation("com.google.android.gms:play-services-auth:20.7.0")
     
     // OneSignal - Push Notifications
     implementation("com.onesignal:OneSignal:[5.0.0, 5.99.99]")

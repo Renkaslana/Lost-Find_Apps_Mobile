@@ -20,6 +20,7 @@ class SettingsRepository(private val context: Context) {
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val THEME_MODE = stringPreferencesKey("theme_mode") // "system", "light", "dark"
         val THEME_COLOR = stringPreferencesKey("theme_color") // ThemeColor enum name
+        val IS_GUEST_MODE = booleanPreferencesKey("is_guest_mode") // Guest mode flag
     }
     
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data
@@ -40,6 +41,11 @@ class SettingsRepository(private val context: Context) {
     val themeColorFlow: Flow<String> = dataStore.data
         .map { preferences ->
             preferences[PreferenceKeys.THEME_COLOR] ?: "TEAL"
+        }
+    
+    val isGuestModeFlow: Flow<Boolean> = dataStore.data
+        .map { preferences ->
+            preferences[PreferenceKeys.IS_GUEST_MODE] ?: false
         }
     
     suspend fun setNotificationsEnabled(enabled: Boolean) {
@@ -63,6 +69,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun setThemeColor(colorName: String) {
         dataStore.edit { preferences ->
             preferences[PreferenceKeys.THEME_COLOR] = colorName
+        }
+    }
+    
+    suspend fun setGuestMode(isGuest: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.IS_GUEST_MODE] = isGuest
         }
     }
 }
