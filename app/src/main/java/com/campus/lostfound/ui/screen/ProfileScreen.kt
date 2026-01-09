@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.CachePolicy
+import androidx.compose.ui.platform.LocalContext
 import com.campus.lostfound.data.model.User
 import com.campus.lostfound.ui.viewmodel.AuthViewModel
 
@@ -213,7 +216,13 @@ private fun ProfileHeader(
             ) {
                 if (user.photoUrl.isNotEmpty()) {
                     AsyncImage(
-                        model = user.photoUrl,
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(user.photoUrl)
+                            .crossfade(true)
+                            .size(200) // ✅ Resize to 200x200 (reduce bandwidth 90%)
+                            .diskCachePolicy(CachePolicy.ENABLED) // ✅ Cache to disk
+                            .memoryCachePolicy(CachePolicy.ENABLED) // ✅ Cache to memory
+                            .build(),
                         contentDescription = "Profile picture",
                         modifier = Modifier
                             .fillMaxSize()

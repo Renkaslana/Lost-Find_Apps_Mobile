@@ -30,10 +30,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.request.CachePolicy
 import com.campus.lostfound.data.model.ItemType
 import com.campus.lostfound.data.model.LostFoundItem
 import com.campus.lostfound.data.repository.LostFoundRepository
+import com.campus.lostfound.data.repository.UserRepository
 import com.campus.lostfound.ui.components.SmallUserAvatar
 import com.campus.lostfound.ui.theme.FoundGreen
 import com.campus.lostfound.ui.theme.FoundGreenLight
@@ -72,6 +76,7 @@ fun DetailScreen(
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val isOwner by viewModel.isOwner.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val currentUserName by viewModel.currentUserName.collectAsStateWithLifecycle()
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showCompleteDialog by remember { mutableStateOf(false) }
@@ -250,8 +255,15 @@ fun DetailScreen(
                                 )
                             } ?: ImagePlaceholder(modifier = Modifier.fillMaxSize())
                         } else {
-                            Image(
-                                painter = rememberAsyncImagePainter(item!!.imageUrl),
+                            // ✅ Optimized URL image with Coil caching
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(item!!.imageUrl)
+                                    .crossfade(true)
+                                    .size(800) // ✅ Max 800px for detail view
+                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                    .memoryCachePolicy(CachePolicy.ENABLED)
+                                    .build(),
                                 contentDescription = item!!.itemName,
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -388,7 +400,7 @@ fun DetailScreen(
                             ) {
                                 SmallUserAvatar(
                                     photoUrl = item!!.userPhotoUrl,
-                                    name = item!!.userName ?: ""
+                                    name = currentUserName ?: item!!.userName ?: ""
                                 )
                                 Column(
                                     modifier = Modifier.weight(1f)
@@ -399,9 +411,11 @@ fun DetailScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = item!!.userName ?: "",
+                                        text = currentUserName ?: item!!.userName ?: "Memuat...",
                                         style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 2,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
                                 }
                                 Icon(
@@ -585,7 +599,14 @@ private fun FullscreenImageViewer(
                 }
             } else {
                 Image(
-                    painter = rememberAsyncImagePainter(imageUrl),
+                    painter = rememberAsyncImagePainter(
+                        ImageRequest.Builder(LocalContext.current)
+                            .data(imageUrl)
+                            .size(1200) // ✅ Max 1200px for fullscreen
+                            .diskCachePolicy(CachePolicy.ENABLED)
+                            .memoryCachePolicy(CachePolicy.ENABLED)
+                            .build()
+                    ),
                     contentDescription = itemName,
                     modifier = Modifier
                         .fillMaxSize()
@@ -712,6 +733,7 @@ class DetailViewModel(
 ) : ViewModel() {
     private val repository = LostFoundRepository(context)
     private val localHistoryRepository = com.campus.lostfound.data.LocalHistoryRepository(context)
+    private val userRepository = UserRepository()
     
     private val _item = MutableStateFlow<LostFoundItem?>(null)
     val item: StateFlow<LostFoundItem?> = _item.asStateFlow()
@@ -724,6 +746,10 @@ class DetailViewModel(
     
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+    
+    // State untuk menyimpan nama user yang di-fetch secara real-time
+    private val _currentUserName = MutableStateFlow<String?>(null)
+    val currentUserName: StateFlow<String?> = _currentUserName.asStateFlow()
     
     init {
         loadItem()
@@ -743,6 +769,9 @@ class DetailViewModel(
                 _item.value = loadedItem
                 _isOwner.value = loadedItem.userId == repository.getCurrentUserId()
                 android.util.Log.d("DetailViewModel", "✅ Item loaded from Firestore: ${loadedItem.itemName}")
+                
+                // Fetch current user profile name secara real-time
+                fetchCurrentUserName(loadedItem.userId)
             } else {
                 // Not found in Firestore, try Local Storage (after 7 days cleanup)
                 android.util.Log.d("DetailViewModel", "⚠️ Item not in Firestore, checking local storage...")
@@ -752,6 +781,9 @@ class DetailViewModel(
                     _item.value = localItem.item
                     _isOwner.value = true // If in local history, user is the owner
                     android.util.Log.d("DetailViewModel", "✅ Item loaded from Local Storage: ${localItem.item.itemName}")
+                    
+                    // Fetch current user profile name untuk local item juga
+                    fetchCurrentUserName(localItem.item.userId)
                 } else {
                     // Not found anywhere
                     _errorMessage.value = "Laporan tidak ditemukan"
@@ -760,6 +792,21 @@ class DetailViewModel(
             }
             
             _isLoading.value = false
+        }
+    }
+    
+    private fun fetchCurrentUserName(userId: String) {
+        viewModelScope.launch {
+            val result = userRepository.getUserProfile(userId)
+            result.onSuccess { userProfile ->
+                // Gunakan nama dari profile yang up-to-date
+                _currentUserName.value = userProfile.name
+                android.util.Log.d("DetailViewModel", "✅ Fetched current user name: ${userProfile.name}")
+            }.onFailure { error ->
+                // Fallback ke userName historis jika fetch gagal
+                _currentUserName.value = _item.value?.userName
+                android.util.Log.w("DetailViewModel", "⚠️ Failed to fetch user name, using historical: ${_item.value?.userName}")
+            }
         }
     }
     

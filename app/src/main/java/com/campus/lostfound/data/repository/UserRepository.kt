@@ -1,6 +1,7 @@
 package com.campus.lostfound.data.repository
 
 import com.campus.lostfound.data.model.User
+import com.campus.lostfound.util.UserCache
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.Timestamp
@@ -11,8 +12,13 @@ class UserRepository {
     private val auth = FirebaseAuth.getInstance()
     private val usersCollection = firestore.collection("users")
     
-    // Get current user profile
+    // Get current user profile with cache
     suspend fun getCurrentUserProfile(): Result<User> {
+        // ✅ Check cache first
+        UserCache.get()?.let { 
+            return Result.success(it) 
+        }
+        
         return try {
             val userId = auth.currentUser?.uid ?: return Result.failure(Exception("User not logged in"))
             val snapshot = usersCollection.document(userId).get().await()
@@ -20,6 +26,8 @@ class UserRepository {
             if (snapshot.exists()) {
                 val user = snapshot.toObject(User::class.java)
                 if (user != null) {
+                    // ✅ Save to cache
+                    UserCache.set(user)
                     Result.success(user)
                 } else {
                     Result.failure(Exception("Failed to parse user data"))
@@ -121,6 +129,9 @@ class UserRepository {
             
             if (updates.isNotEmpty()) {
                 usersCollection.document(userId).update(updates).await()
+                
+                // ✅ Clear cache after update so ProfileScreen shows fresh data
+                com.campus.lostfound.util.UserCache.clear()
             }
             
             Result.success(Unit)

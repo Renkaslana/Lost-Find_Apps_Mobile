@@ -30,15 +30,23 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.request.CachePolicy
+import androidx.compose.ui.platform.LocalContext
 import com.campus.lostfound.data.model.ItemType
 import com.campus.lostfound.data.model.LostFoundItem
+import com.campus.lostfound.data.repository.UserRepository
 import com.campus.lostfound.ui.theme.FoundGreen
 import com.campus.lostfound.ui.theme.LostRed
 import com.campus.lostfound.util.ImageConverter
 import com.campus.lostfound.ui.theme.FoundGreenLight
 import com.campus.lostfound.ui.theme.LostRedLight
 import com.campus.lostfound.ui.theme.AccentTeal
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 @Composable
 fun ItemCard(
@@ -47,8 +55,20 @@ fun ItemCard(
     onCardClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    
+    // State untuk menyimpan nama user yang di-fetch real-time
+    var currentUserName by remember { mutableStateOf(item.userName) }
+    
+    // Fetch current user name dari profile saat card dimuat
+    LaunchedEffect(item.userId) {
+        val userRepository = UserRepository()
+        userRepository.getUserProfile(item.userId).onSuccess { userProfile ->
+            currentUserName = userProfile.name
+        }
+    }
     
     // Subtle elevation animation
     val elevation by animateFloatAsState(
@@ -122,17 +142,52 @@ fun ItemCard(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                 )
                             }
+                            
+                            // 🆕 Completed Badge - kanan atas
+                            if (item.isCompleted) {
+                                Surface(
+                                    color = Color(0xFF4CAF50),
+                                    shape = RoundedCornerShape(bottomStart = 16.dp, topEnd = 20.dp),
+                                    modifier = Modifier.align(Alignment.TopEnd)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Text(
+                                            text = "Selesai",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
                         }
                     } ?: LargeImagePlaceholder(item.type)
                 } else {
+                    // ✅ Optimized URL image loading with Coil
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(16f / 9f)
                             .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                     ) {
-                        Image(
-                            painter = rememberAsyncImagePainter(item.imageUrl),
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(item.imageUrl)
+                                .crossfade(true)
+                                .size(400) // ✅ Resize to 400px max (reduce bandwidth)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .build(),
                             contentDescription = item.itemName,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -151,6 +206,34 @@ fun ItemCard(
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                             )
+                        }
+                        
+                        // 🆕 Completed Badge - kanan atas
+                        if (item.isCompleted) {
+                            Surface(
+                                color = Color(0xFF4CAF50),
+                                shape = RoundedCornerShape(bottomStart = 16.dp, topEnd = 20.dp),
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "Selesai",
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -222,6 +305,7 @@ fun ItemCard(
                 ) {
                     // User info
                     Row(
+                        modifier = Modifier.weight(1f, fill = false),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -234,8 +318,15 @@ fun ItemCard(
                                     .background(MaterialTheme.colorScheme.primaryContainer)
                             ) {
                                 Image(
-                                    painter = rememberAsyncImagePainter(item.userPhotoUrl),
-                                    contentDescription = "Foto ${item.userName}",
+                                    painter = rememberAsyncImagePainter(
+                                        ImageRequest.Builder(LocalContext.current)
+                                            .data(item.userPhotoUrl)
+                                            .size(100) // ✅ Small profile photo
+                                            .diskCachePolicy(CachePolicy.ENABLED)
+                                            .memoryCachePolicy(CachePolicy.ENABLED)
+                                            .build()
+                                    ),
+                                    contentDescription = "Foto ${currentUserName}",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
@@ -257,14 +348,16 @@ fun ItemCard(
                             }
                         }
                         
-                        Column {
+                        Column(
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
                             Text(
                                 text = "Dilaporkan oleh",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                             Text(
-                                text = item.userName.ifEmpty { "Pengguna" },
+                                text = currentUserName.ifEmpty { "Pengguna" },
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,

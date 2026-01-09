@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.campus.lostfound.data.model.User
 import com.campus.lostfound.data.repository.AuthRepository
+import com.campus.lostfound.util.UserCache
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +57,8 @@ class AuthViewModel(
         loadCurrentUser()
     }
     
+    private var loadUserJob: Job? = null
+    
     private fun observeAuthState() {
         viewModelScope.launch {
             repository.authState.collect { firebaseUser ->
@@ -69,9 +74,14 @@ class AuthViewModel(
     private fun loadCurrentUser() {
         val firebaseUser = repository.currentUser ?: return
         
-        viewModelScope.launch {
+        // ✅ Cancel previous load job (debounce)
+        loadUserJob?.cancel()
+        loadUserJob = viewModelScope.launch {
+            delay(300) // ✅ Debounce 300ms
             repository.getUserById(firebaseUser.uid)
                 .onSuccess { user ->
+                    // ✅ Save to cache
+                    UserCache.set(user)
                     _authState.value = _authState.value.copy(currentUser = user)
                 }
                 .onFailure { error ->
@@ -274,6 +284,9 @@ class AuthViewModel(
     // Logout
     fun logout() {
         viewModelScope.launch {
+            // ✅ Clear user cache on logout
+            UserCache.clear()
+            loadUserJob?.cancel()
             repository.logout()
             _authState.value = AuthUiState() // Reset state
         }

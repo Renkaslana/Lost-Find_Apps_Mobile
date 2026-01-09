@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.request.CachePolicy
 import com.campus.lostfound.data.LocalHistoryRepository
 import com.campus.lostfound.data.model.LostFoundItem
 import com.campus.lostfound.ui.viewmodel.ActivityViewModel
@@ -504,7 +506,14 @@ private fun EditReportDialog(
 
                 if (imageUri != null) {
                     Image(
-                        painter = rememberAsyncImagePainter(imageUri),
+                        painter = rememberAsyncImagePainter(
+                            ImageRequest.Builder(LocalContext.current)
+                                .data(imageUri)
+                                .size(400) // ✅ Resize preview
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .build()
+                        ),
                         contentDescription = "Selected image",
                         modifier = Modifier
                             .fillMaxWidth()
@@ -513,7 +522,14 @@ private fun EditReportDialog(
                     )
                 } else if (item.imageUrl.isNotEmpty()) {
                     Image(
-                        painter = rememberAsyncImagePainter(item.imageUrl),
+                        painter = rememberAsyncImagePainter(
+                            ImageRequest.Builder(LocalContext.current)
+                                .data(item.imageUrl)
+                                .size(400) // ✅ Resize preview
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                .build()
+                        ),
                         contentDescription = "Current image",
                         modifier = Modifier
                             .fillMaxWidth()

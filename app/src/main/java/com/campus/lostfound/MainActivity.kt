@@ -65,6 +65,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // ✅ Enable Firestore Offline Persistence for better performance
+        try {
+            com.google.firebase.firestore.FirebaseFirestore.getInstance().apply {
+                firestoreSettings = com.google.firebase.firestore.FirebaseFirestoreSettings.Builder()
+                    .setPersistenceEnabled(true) // Enable offline cache
+                    .setCacheSizeBytes(10 * 1024 * 1024) // 10 MB cache
+                    .build()
+            }
+            Log.d("MainActivity", "Firestore offline persistence enabled")
+        } catch (e: Exception) {
+            Log.w("MainActivity", "Firestore already initialized", e)
+        }
+        
         // Request notification permission for Android 13+
         requestNotificationPermission()
 

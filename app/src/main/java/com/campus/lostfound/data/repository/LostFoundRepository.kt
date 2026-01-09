@@ -5,9 +5,11 @@ import android.net.Uri
 import com.campus.lostfound.data.model.LostFoundItem
 import com.campus.lostfound.data.model.ItemType
 import com.campus.lostfound.util.ImageConverter
+import com.campus.lostfound.util.ItemCache
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.Source
 import com.google.firebase.Timestamp
 import java.util.Date
 import com.google.firebase.firestore.Query
@@ -125,6 +127,9 @@ class LostFoundRepository(private val context: Context) {
             } ?: emptyList()
 
             Log.d("LostFoundRepo", "Query returned ${items.size} items, filter type: $type")
+            
+            // ✅ Cache all items for faster detail screen loading
+            ItemCache.setAll(items)
 
             // Filter by type di client side
             val filtered = if (type != null) {
@@ -319,6 +324,19 @@ class LostFoundRepository(private val context: Context) {
             
             Log.d("LostFoundRepo", "Report marked as completed in Firestore: $itemId")
 
+            // 🆕 UPDATE USER STATS: Increment totalHelped only for FOUND reports
+            // Konsep: User yang menemukan barang (FOUND) dan mengembalikan → helped++
+            if (item.type == com.campus.lostfound.data.model.ItemType.FOUND) {
+                val userRepository = com.campus.lostfound.data.repository.UserRepository()
+                userRepository.updateStats(
+                    userId = userId,
+                    incrementHelped = 1
+                )
+                Log.d("LostFoundRepo", "✅ totalHelped incremented for user: $userId (FOUND report completed)")
+            } else {
+                Log.d("LostFoundRepo", "ℹ️ LOST report completed, no helped increment")
+            }
+
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("LostFoundRepo", "Error marking as completed: ${e.message}")
@@ -342,28 +360,60 @@ class LostFoundRepository(private val context: Context) {
     
     suspend fun getItemById(itemId: String): Result<LostFoundItem> {
         return try {
-            // First try to get from active items in Firestore
+            // ✅ 1. Check memory cache first (instant)
+            ItemCache.get(itemId)?.let {
+                Log.d("LostFoundRepo", "Cache HIT for item: $itemId")
+                return Result.success(it)
+            }
+            
+            Log.d("LostFoundRepo", "Cache MISS for item: $itemId, fetching...")
+            
+            // ✅ 2. Try Firestore CACHE first (offline support)
+            try {
+                val cachedDoc = firestore.collection("items")
+                    .document(itemId)
+                    .get(Source.CACHE)
+                    .await()
+                    
+                if (cachedDoc.exists()) {
+                    val cachedItem = cachedDoc.toObject(LostFoundItem::class.java)?.copy(id = cachedDoc.id)
+                    if (cachedItem != null) {
+                        ItemCache.set(itemId, cachedItem)
+                        Log.d("LostFoundRepo", "Loaded from Firestore cache")
+                        return Result.success(cachedItem)
+                    }
+                }
+            } catch (cacheError: Exception) {
+                Log.d("LostFoundRepo", "Firestore cache miss: ${cacheError.message}")
+            }
+            
+            // ✅ 3. Fetch from Firestore SERVER
             val doc = firestore.collection("items").document(itemId).get().await()
             val item = doc.toObject(LostFoundItem::class.java)?.copy(id = doc.id)
             
             if (item != null) {
+                // ✅ Save to cache
+                ItemCache.set(itemId, item)
                 Result.success(item)
             } else {
-                // If not found in active items, try to find in local history
+                // ✅ 4. Fallback to local history
                 val localHistory = localHistoryRepository.getHistoryById(itemId)
                 if (localHistory != null) {
-                    // Return the item from history with completed status
-                    Result.success(localHistory.item.copy(isCompleted = true))
+                    val historyItem = localHistory.item.copy(isCompleted = true)
+                    ItemCache.set(itemId, historyItem)
+                    Result.success(historyItem)
                 } else {
                     Result.failure(Exception("Laporan tidak ditemukan"))
                 }
             }
         } catch (e: Exception) {
-            // Fallback to local history if Firestore fails
+            // ✅ 5. Final fallback to local history if network fails
             try {
                 val localHistory = localHistoryRepository.getHistoryById(itemId)
                 if (localHistory != null) {
-                    Result.success(localHistory.item.copy(isCompleted = true))
+                    val historyItem = localHistory.item.copy(isCompleted = true)
+                    ItemCache.set(itemId, historyItem)
+                    Result.success(historyItem)
                 } else {
                     Result.failure(e)
                 }
