@@ -48,6 +48,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.campus.lostfound.util.GoogleSignInHelper
 import com.campus.lostfound.R
 import com.campus.lostfound.ui.viewmodel.AuthViewModel
 
@@ -94,6 +97,7 @@ fun RegisterScreen(
     onNavigateToHome: () -> Unit,
     authViewModel: AuthViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val registerForm by authViewModel.registerForm.collectAsState()
     val authState by authViewModel.authState.collectAsState()
     val haptic = LocalHapticFeedback.current
@@ -111,6 +115,29 @@ fun RegisterScreen(
 
     // Terms acceptance state
     var termsAccepted by remember { mutableStateOf(false) }
+    
+    // Google Sign-In setup
+    val googleSignInClient = remember {
+        GoogleSignInHelper.getGoogleSignInClient(
+            context,
+            context.getString(R.string.default_web_client_id)
+        )
+    }
+    
+    val googleSignInLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            GoogleSignInHelper.handleSignInResult(task)
+                .onSuccess { idToken -> 
+                    authViewModel.loginWithGoogle(idToken)
+                }
+                .onFailure { error ->
+                    android.util.Log.e("RegisterScreen", "Google Sign-In failed", error)
+                }
+        }
+    }
 
     // Password strength calculation
     val passwordStrength = remember(registerForm.password) {
@@ -360,7 +387,8 @@ fun RegisterScreen(
                         text = "Continue with Google",
                         onClick = {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            // TODO: Implement Google Sign-Up flow
+                            // Launch Google Sign-In account picker
+                            googleSignInLauncher.launch(googleSignInClient.signInIntent)
                         }
                     )
 

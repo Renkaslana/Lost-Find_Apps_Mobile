@@ -148,29 +148,29 @@ class AuthViewModel(
     // Validation helpers
     private fun validateEmail(email: String): String? {
         return when {
-            email.isBlank() -> "Email is required"
+            email.isBlank() -> "Email harus diisi"
             !email.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\$")) -> 
-                "Invalid email format"
+                "Format email tidak valid"
             else -> null
         }
     }
     
     private fun validatePassword(password: String): String? {
         return when {
-            password.isEmpty() -> "Password is required"
-            password.length < 6 -> "Password must be at least 6 characters"
+            password.isEmpty() -> "Kata sandi harus diisi"
+            password.length < 6 -> "Kata sandi minimal 6 karakter"
             else -> null
         }
     }
     
     private fun validatePhoneNumber(phone: String): String? {
-        if (phone.isBlank()) return "Phone number is required"
+        if (phone.isBlank()) return null // Phone is optional
         
         val cleanPhone = phone.replace(Regex("[^0-9+]"), "")
         return when {
-            cleanPhone.length < 10 -> "Phone number too short"
+            cleanPhone.length < 10 -> "Nomor telepon terlalu pendek"
             !cleanPhone.matches(Regex("^(\\+62|62|0)[0-9]{9,12}\$")) -> 
-                "Invalid Indonesian phone number"
+                "Format nomor telepon tidak valid"
             else -> null
         }
     }
@@ -216,11 +216,12 @@ class AuthViewModel(
         val form = _registerForm.value
         
         // Validate all fields
-        val nameError = if (form.name.isBlank()) "Name is required" else null
+        val nameError = if (form.name.isBlank()) "Nama harus diisi" else null
         val emailError = validateEmail(form.email)
         val passwordError = validatePassword(form.password)
-        val confirmError = if (form.confirmPassword != form.password) "Passwords do not match" else null
-        val phoneError = validatePhoneNumber(form.phoneNumber)
+        val confirmError = if (form.confirmPassword != form.password) "Kata sandi tidak cocok" else null
+        // Phone number is optional during registration
+        val phoneError = if (form.phoneNumber.isNotBlank()) validatePhoneNumber(form.phoneNumber) else null
         
         if (nameError != null || emailError != null || passwordError != null || 
             confirmError != null || phoneError != null) {
@@ -231,19 +232,23 @@ class AuthViewModel(
                 confirmPasswordError = confirmError,
                 phoneError = phoneError
             )
+            android.util.Log.e("AuthViewModel", "Registration validation failed: name=$nameError, email=$emailError, password=$passwordError, confirm=$confirmError, phone=$phoneError")
             return
         }
         
         viewModelScope.launch {
             _authState.value = _authState.value.copy(isLoading = true, error = null)
             
+            android.util.Log.d("AuthViewModel", "Starting registration for email: ${form.email}")
+            
             repository.registerWithEmail(
                 email = form.email,
                 password = form.password,
                 name = form.name,
-                phoneNumber = form.phoneNumber
+                phoneNumber = form.phoneNumber.ifBlank { "" }
             )
                 .onSuccess { user ->
+                    android.util.Log.d("AuthViewModel", "Registration successful for user: ${user.id}")
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         currentUser = user,
@@ -251,6 +256,7 @@ class AuthViewModel(
                     )
                 }
                 .onFailure { error ->
+                    android.util.Log.e("AuthViewModel", "Registration failed: ${error.message}", error)
                     _authState.value = _authState.value.copy(
                         isLoading = false,
                         error = getReadableError(error)
@@ -326,12 +332,14 @@ class AuthViewModel(
     // Get readable error message
     private fun getReadableError(error: Throwable): String {
         val message = error.message ?: ""
+        android.util.Log.e("AuthViewModel", "Error details: $message", error)
+        
         return when {
             // Firebase Auth error codes
             message.contains("INVALID_LOGIN_CREDENTIALS") || 
             message.contains("ERROR_WRONG_PASSWORD") ||
             message.contains("wrong-password") -> 
-                "Password salah. Silakan coba lagi."
+                "Kata sandi salah. Silakan coba lagi."
             
             message.contains("ERROR_USER_NOT_FOUND") ||
             message.contains("user-not-found") ||
@@ -339,29 +347,43 @@ class AuthViewModel(
                 "Akun tidak ditemukan. Silakan daftar terlebih dahulu."
             
             message.contains("ERROR_INVALID_EMAIL") ||
-            message.contains("invalid-email") ->
+            message.contains("invalid-email") ||
+            message.contains("badly formatted") ->
                 "Format email tidak valid."
             
             message.contains("ERROR_EMAIL_ALREADY_IN_USE") ||
-            message.contains("email-already-in-use") ->
+            message.contains("email-already-in-use") ||
+            message.contains("already in use") ->
                 "Email sudah terdaftar. Silakan login atau gunakan email lain."
             
             message.contains("ERROR_WEAK_PASSWORD") ||
             message.contains("weak-password") ->
-                "Password terlalu lemah. Minimal 6 karakter."
+                "Kata sandi terlalu lemah. Minimal 6 karakter."
             
             message.contains("ERROR_TOO_MANY_REQUESTS") ||
             message.contains("too-many-requests") ->
                 "Terlalu banyak percobaan. Silakan coba lagi nanti."
             
             message.contains("network") ||
-            message.contains("Network") ->
+            message.contains("Network") ||
+            message.contains("Unable to resolve host") ->
                 "Koneksi internet bermasalah. Periksa koneksi Anda."
             
-            message.contains("timeout") ->
+            message.contains("timeout") ||
+            message.contains("timed out") ->
                 "Waktu koneksi habis. Coba lagi."
             
-            else -> "Login gagal. Periksa email dan password Anda."
+            message.contains("User creation failed") ->
+                "Gagal membuat akun. Silakan coba lagi."
+            
+            // Generic fallback
+            else -> {
+                if (message.contains("login", ignoreCase = true)) {
+                    "Login gagal. Periksa email dan kata sandi Anda."
+                } else {
+                    "Terjadi kesalahan: ${message.take(100)}"
+                }
+            }
         }
     }
 }
