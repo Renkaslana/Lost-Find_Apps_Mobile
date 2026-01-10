@@ -96,10 +96,11 @@ class AuthRepository {
             }
             
             val user = if (existingUser != null) {
-                // Update last active for existing user
+                // Existing user - Update last active
                 usersCollection.document(firebaseUser.uid)
                     .update("lastActive", Timestamp.now())
                     .await()
+                android.util.Log.d("AuthRepository", "✅ Existing user logged in: ${existingUser.email}")
                 existingUser
             } else {
                 // Create new user
@@ -113,11 +114,13 @@ class AuthRepository {
                     lastActive = Timestamp.now()
                 )
                 usersCollection.document(firebaseUser.uid).set(newUser).await()
+                android.util.Log.d("AuthRepository", "✅ New user created: ${newUser.email}")
                 newUser
             }
             
             Result.success(user)
         } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "❌ Google login failed", e)
             Result.failure(e)
         }
     }
