@@ -28,6 +28,7 @@ import com.campus.lostfound.ui.theme.FoundGreen
 import com.campus.lostfound.ui.theme.ThemeColor
 import com.campus.lostfound.ui.viewmodel.SettingsViewModel
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -66,11 +67,38 @@ fun ProfileScreen(
     // Load user profile only if not guest
     LaunchedEffect(isGuestMode) {
         if (!isGuestMode) {
+            // ✅ INSTANT LOAD from persistent cache (DataStore) - use first() to get value once
             scope.launch {
-                isLoading = true
+                val cachedName = settingsRepository.cachedUserNameFlow.first()
+                val cachedEmail = settingsRepository.cachedUserEmailFlow.first()
+                val cachedPhoto = settingsRepository.cachedUserPhotoFlow.first()
+                
+                if (cachedName.isNotBlank()) {
+                    // Show cached data immediately with photo
+                    val cachedUser = com.campus.lostfound.data.model.User(
+                        id = auth.currentUser?.uid ?: "",
+                        email = cachedEmail.ifEmpty { auth.currentUser?.email ?: "" },
+                        name = cachedName,
+                        photoUrl = cachedPhoto
+                    )
+                    userProfile = cachedUser
+                    isLoading = false
+                    android.util.Log.d("ProfileScreen", "✅ Loaded from PERSISTENT cache: name='$cachedName', photo='${cachedPhoto.take(30)}...'")
+                } else {
+                    android.util.Log.d("ProfileScreen", "⚠️ No cached profile found")
+                }
+            }
+            
+            // Then refresh from server in background
+            scope.launch {
+                android.util.Log.d("ProfileScreen", "🔄 Refreshing from server...")
                 val result = userRepository.getCurrentUserProfile()
                 result.onSuccess { user ->
                     userProfile = user
+                    // Save to persistent cache
+                    settingsRepository.cacheUserProfile(user.id, user.name, user.email, user.photoUrl)
+                    android.util.Log.d("ProfileScreen", "✅ Updated from server & saved to cache: '${user.name}'")
+                    
                     // Load stats
                     userRepository.getUserStats(user.id).onSuccess {
                         stats = it

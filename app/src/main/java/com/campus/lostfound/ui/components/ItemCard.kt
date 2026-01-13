@@ -62,11 +62,27 @@ fun ItemCard(
     // State untuk menyimpan nama user yang di-fetch real-time
     var currentUserName by remember { mutableStateOf(item.userName) }
     
-    // Fetch current user name dari profile saat card dimuat
+    // Log item userName saat pertama kali load
+    LaunchedEffect(Unit) {
+        android.util.Log.d("ItemCard", "📦 Item loaded - userName from item: '${item.userName}' for item: ${item.itemName}")
+    }
+    
+    // ✅ Fetch current user name dari cache/Firestore untuk real-time update
     LaunchedEffect(item.userId) {
         val userRepository = UserRepository()
-        userRepository.getUserProfile(item.userId).onSuccess { userProfile ->
-            currentUserName = userProfile.name
+        // Check cache first (instant)
+        val cachedUser = com.campus.lostfound.util.UserCache.getUserById(item.userId)
+        if (cachedUser != null) {
+            currentUserName = cachedUser.name
+            android.util.Log.d("ItemCard", "✅ Loaded from cache for ${item.userId}: '${cachedUser.name}'")
+        } else {
+            // Fetch from Firestore if not cached
+            userRepository.getUserProfile(item.userId).onSuccess { userProfile ->
+                currentUserName = userProfile.name
+                android.util.Log.d("ItemCard", "✅ Fetched from server for ${item.userId}: '${userProfile.name}'")
+                // Cache for next time
+                com.campus.lostfound.util.UserCache.setUserById(item.userId, userProfile)
+            }
         }
     }
     
@@ -357,7 +373,7 @@ fun ItemCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
                             Text(
-                                text = currentUserName.ifEmpty { "Pengguna" },
+                                text = currentUserName.trim().ifEmpty { "Teman" },
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,

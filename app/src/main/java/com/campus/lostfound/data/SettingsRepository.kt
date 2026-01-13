@@ -21,6 +21,13 @@ class SettingsRepository(private val context: Context) {
         val THEME_MODE = stringPreferencesKey("theme_mode") // "system", "light", "dark"
         val THEME_COLOR = stringPreferencesKey("theme_color") // ThemeColor enum name
         val IS_GUEST_MODE = booleanPreferencesKey("is_guest_mode") // Guest mode flag
+        
+        // Profile cache (persistent)
+        val CACHED_USER_ID = stringPreferencesKey("cached_user_id")
+        val CACHED_USER_NAME = stringPreferencesKey("cached_user_name")
+        val CACHED_USER_EMAIL = stringPreferencesKey("cached_user_email")
+        val CACHED_USER_PHOTO = stringPreferencesKey("cached_user_photo")
+        val CACHED_USER_TIME = stringPreferencesKey("cached_user_time")
     }
     
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data
@@ -77,4 +84,41 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferenceKeys.IS_GUEST_MODE] = isGuest
         }
     }
+    
+    // Profile cache methods
+    suspend fun cacheUserProfile(userId: String, name: String, email: String, photoUrl: String) {
+        dataStore.edit { preferences ->
+            preferences[PreferenceKeys.CACHED_USER_ID] = userId
+            preferences[PreferenceKeys.CACHED_USER_NAME] = name
+            preferences[PreferenceKeys.CACHED_USER_EMAIL] = email
+            preferences[PreferenceKeys.CACHED_USER_PHOTO] = photoUrl
+            preferences[PreferenceKeys.CACHED_USER_TIME] = System.currentTimeMillis().toString()
+        }
+    }
+    
+    suspend fun getCachedUserProfile(): Triple<String, String, String>? {
+        var result: Triple<String, String, String>? = null
+        dataStore.data.collect { preferences ->
+            val userId = preferences[PreferenceKeys.CACHED_USER_ID] ?: return@collect
+            val name = preferences[PreferenceKeys.CACHED_USER_NAME] ?: ""
+            val email = preferences[PreferenceKeys.CACHED_USER_EMAIL] ?: ""
+            result = Triple(userId, name, email)
+        }
+        return result
+    }
+    
+    val cachedUserNameFlow: Flow<String> = dataStore.data
+        .map { preferences ->
+            preferences[PreferenceKeys.CACHED_USER_NAME] ?: ""
+        }
+    
+    val cachedUserEmailFlow: Flow<String> = dataStore.data
+        .map { preferences ->
+            preferences[PreferenceKeys.CACHED_USER_EMAIL] ?: ""
+        }
+    
+    val cachedUserPhotoFlow: Flow<String> = dataStore.data
+        .map { preferences ->
+            preferences[PreferenceKeys.CACHED_USER_PHOTO] ?: ""
+        }
 }

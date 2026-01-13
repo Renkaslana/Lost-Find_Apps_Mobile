@@ -41,6 +41,7 @@ import com.campus.lostfound.ui.theme.LostRed
 import com.campus.lostfound.ui.theme.FoundGreen
 import com.campus.lostfound.util.WhatsAppUtil
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 // Kategori untuk filter
 data class ExploreCategory(
@@ -56,6 +57,7 @@ fun ExploreScreen(
     onNavigateToDetail: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val viewModel: HomeViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -347,13 +349,31 @@ fun ExploreScreen(
                         ItemCard(
                             item = item,
                             onContactClick = {
-                                val typeText = if (item.type == ItemType.LOST) "barang hilang" else "barang ditemukan"
-                                WhatsAppUtil.openWhatsApp(
-                                    context = context,
-                                    phoneNumber = item.whatsappNumber,
-                                    itemName = item.itemName,
-                                    type = typeText
-                                )
+                                scope.launch {
+                                    // ✅ Langsung pakai userName dari item jika sudah ada
+                                    val userName = if (item.userName.isNotBlank()) {
+                                        android.util.Log.d("ExploreScreen", "✅ Using existing userName: '${item.userName}'")
+                                        item.userName
+                                    } else {
+                                        // Only fetch if userName is empty
+                                        android.util.Log.d("ExploreScreen", "⚠️ userName empty, fetching from Firestore for userId: ${item.userId}")
+                                        val userRepo = com.campus.lostfound.data.repository.UserRepository()
+                                        val userProfileResult = userRepo.getUserProfile(item.userId)
+                                        userProfileResult.getOrNull()?.name?.takeIf { it.isNotBlank() } ?: "Teman"
+                                    }
+                                    
+                                    android.util.Log.d("ExploreScreen", "Final userName: '$userName'")
+                                    
+                                    val typeText = if (item.type == ItemType.LOST) "barang hilang" else "barang ditemukan"
+                                    WhatsAppUtil.openWhatsApp(
+                                        context = context,
+                                        phoneNumber = item.whatsappNumber,
+                                        itemName = item.itemName,
+                                        type = typeText,
+                                        userName = userName,
+                                        location = item.location
+                                    )
+                                }
                             },
                             onCardClick = {
                                 onNavigateToDetail?.invoke(item.id)
@@ -465,5 +485,33 @@ private fun TypeFilterChip(
 
 private fun buildContactMessage(item: LostFoundItem): String {
     val typeText = if (item.type == ItemType.LOST) "hilang" else "ditemukan"
-    return "Halo, saya melihat laporan barang $typeText \"${item.itemName}\" di aplikasi Campus Lost & Found. Apakah masih tersedia?"
+    val displayName = item.getDisplayName()
+    
+    return if (item.type == ItemType.LOST) {
+        // Message for LOST items
+        buildString {
+            append("Halo $displayName! 👋\n\n")
+            append("Saya lihat laporan kamu tentang *${item.itemName}* yang hilang")
+            if (item.location.isNotEmpty()) {
+                append(" di area *${item.location}*")
+            }
+            append(".\\n\\n")
+            append("Kebetulan saya mungkin punya info atau menemukannya. ")
+            append("Boleh diskusi lebih lanjut?\\n\\n")
+            append("📱 Via Campus Lost & Found")
+        }
+    } else {
+        // Message for FOUND items
+        buildString {
+            append("Halo $displayName! 👋\\n\\n")
+            append("Saya lihat kamu menemukan *${item.itemName}*")
+            if (item.location.isNotEmpty()) {
+                append(" di area *${item.location}*")
+            }
+            append(".\\n\\n")
+            append("Sepertinya itu barang saya yang hilang! ")
+            append("Boleh saya konfirmasi detailnya?\\n\\n")
+            append("📱 Via Campus Lost & Found")
+        }
+    }
 }

@@ -23,6 +23,14 @@ data class LostFoundItem(
     val createdAt: Timestamp = Timestamp.now(),
     val imageStoragePath: String = ""
 ) {
+    /**
+     * Get display name for the reporter
+     * Returns actual name if available, otherwise "Teman"
+     */
+    fun getDisplayName(): String {
+        return userName.trim().ifEmpty { "Teman" }
+    }
+    
     fun getTimeAgo(): String {
         val now = System.currentTimeMillis()
         val created = createdAt.toDate().time

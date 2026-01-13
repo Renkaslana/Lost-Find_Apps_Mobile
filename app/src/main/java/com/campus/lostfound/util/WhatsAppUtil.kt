@@ -66,10 +66,58 @@ object WhatsAppUtil {
         }
     }
     
-    fun openWhatsApp(context: Context, phoneNumber: String, itemName: String, type: String) {
+    fun openWhatsApp(
+        context: Context, 
+        phoneNumber: String, 
+        itemName: String, 
+        type: String,
+        userName: String = "Teman",
+        location: String = ""
+    ) {
         try {
             val formattedNumber = formatPhoneNumber(phoneNumber)
-            val message = "Halo, saya melihat laporan $type \"$itemName\" di Campus Lost & Found. Apakah barang ini masih tersedia?"
+            
+            // Use default name if userName is empty or blank
+            val displayName = userName.trim().ifEmpty { "Teman" }
+            
+            // Debug logging - DETAIL
+            android.util.Log.d("WhatsAppUtil", "═══════════════════════════════")
+            android.util.Log.d("WhatsAppUtil", "📱 Opening WhatsApp")
+            android.util.Log.d("WhatsAppUtil", "   └─ Input userName: '$userName'")
+            android.util.Log.d("WhatsAppUtil", "   └─ Final displayName: '$displayName'")
+            android.util.Log.d("WhatsAppUtil", "   └─ itemName: '$itemName'")
+            android.util.Log.d("WhatsAppUtil", "   └─ type: '$type'")
+            android.util.Log.d("WhatsAppUtil", "   └─ location: '$location'")
+            android.util.Log.d("WhatsAppUtil", "═══════════════════════════════")
+            
+            // Build personalized message based on type
+            val message = if (type == "barang hilang") {
+                // Message for LOST items
+                buildString {
+                    append("Halo $displayName! 👋\n\n")
+                    append("Saya lihat laporan kamu tentang *$itemName* yang hilang")
+                    if (location.isNotEmpty()) {
+                        append(" di area *$location*")
+                    }
+                    append(".\n\n")
+                    append("Kebetulan saya mungkin punya info atau menemukannya. ")
+                    append("Boleh diskusi lebih lanjut?\n\n")
+                    append("📱 Via Campus Lost & Found")
+                }
+            } else {
+                // Message for FOUND items
+                buildString {
+                    append("Halo $displayName! 👋\n\n")
+                    append("Saya lihat kamu menemukan *$itemName*")
+                    if (location.isNotEmpty()) {
+                        append(" di area *$location*")
+                    }
+                    append(".\n\n")
+                    append("Sepertinya itu barang saya yang hilang! ")
+                    append("Boleh saya konfirmasi detailnya?\n\n")
+                    append("📱 Via Campus Lost & Found")
+                }
+            }
             
             val whatsappIntent = Intent(Intent.ACTION_VIEW).apply {
                 data = Uri.parse("https://wa.me/$formattedNumber?text=${Uri.encode(message)}")
@@ -100,17 +148,53 @@ object WhatsAppUtil {
         itemName: String, 
         type: String,
         imageUrl: String,
-        location: String
+        location: String,
+        userName: String = "Teman"
     ) {
         try {
             val formattedNumber = formatPhoneNumber(phoneNumber)
-            val message = buildString {
-                append("📦 *CAMPUS LOST & FOUND*\n\n")
-                append("Halo! Saya lihat  laporan $type:\n\n")
-                append("🏷️ *Nama Barang:* $itemName\n")
-                append("📍 *Lokasi:* $location\n\n")
-                append("Apakah barang ini masih ada?\n")
-                append("Terima kasih! 🙏")
+            
+            // Debug logging - DETAIL
+            android.util.Log.d("WhatsAppUtil", "═══════════════════════════════")
+            android.util.Log.d("WhatsAppUtil", "📱 Opening WhatsApp WITH IMAGE")
+            android.util.Log.d("WhatsAppUtil", "   └─ Input userName: '$userName'")
+            android.util.Log.d("WhatsAppUtil", "   └─ itemName: '$itemName'")
+            android.util.Log.d("WhatsAppUtil", "   └─ type: '$type'")
+            android.util.Log.d("WhatsAppUtil", "   └─ location: '$location'")
+            android.util.Log.d("WhatsAppUtil", "   └─ imageUrl: '${imageUrl.take(50)}...'")
+            
+            // Use default name if userName is empty or blank
+            val displayName = userName.trim().ifEmpty { "Teman" }
+            android.util.Log.d("WhatsAppUtil", "   └─ Final displayName: '$displayName'")
+            android.util.Log.d("WhatsAppUtil", "═══════════════════════════════")
+            
+            // Build personalized message with image based on type
+            val message = if (type == "barang hilang") {
+                // Message for LOST items
+                buildString {
+                    append("Halo $displayName! 👋\n\n")
+                    append("Saya lihat laporan kamu tentang *$itemName* yang hilang")
+                    if (location.isNotEmpty()) {
+                        append(" di area *$location*")
+                    }
+                    append(".\n\n")
+                    append("Kebetulan saya mungkin punya info atau menemukannya. ")
+                    append("Cek foto yang saya kirim, apakah ini barangnya?\n\n")
+                    append("📱 Via Campus Lost & Found")
+                }
+            } else {
+                // Message for FOUND items
+                buildString {
+                    append("Halo $displayName! 👋\n\n")
+                    append("Saya lihat kamu menemukan *$itemName*")
+                    if (location.isNotEmpty()) {
+                        append(" di area *$location*")
+                    }
+                    append(".\n\n")
+                    append("Sepertinya itu barang saya yang hilang! ")
+                    append("Coba cek foto yang saya kirim untuk konfirmasi ya.\n\n")
+                    append("📱 Via Campus Lost & Found")
+                }
             }
             
             // Try to download and share image
@@ -148,12 +232,14 @@ object WhatsAppUtil {
                             context.startActivity(Intent.createChooser(fallbackIntent, "Kirim via"))
                         }
                     } catch (e: Exception) {
-                        // Fallback to simple WhatsApp
-                        openWhatsApp(context, phoneNumber, itemName, type)
+                        // Fallback to simple WhatsApp with all parameters
+                        android.util.Log.w("WhatsAppUtil", "⚠️ Image share failed, fallback to text: ${e.message}")
+                        openWhatsApp(context, phoneNumber, itemName, type, userName, location)
                     }
                 } else {
-                    // Fallback if image download fails
-                    openWhatsApp(context, phoneNumber, itemName, type)
+                    // Fallback if image download fails with all parameters
+                    android.util.Log.w("WhatsAppUtil", "⚠️ Image download failed, fallback to text")
+                    openWhatsApp(context, phoneNumber, itemName, type, userName, location)
                 }
             }
         } catch (e: Exception) {

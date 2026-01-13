@@ -152,13 +152,28 @@ fun DetailScreen(
                         onClick = {
                             item?.let { currentItem ->
                                 scope.launch(Dispatchers.IO) {
+                                    // ✅ Langsung pakai userName dari item jika sudah ada
+                                    val userName = if (currentItem.userName.isNotBlank()) {
+                                        android.util.Log.d("DetailScreen", "✅ Using existing userName: '${currentItem.userName}'")
+                                        currentItem.userName
+                                    } else {
+                                        // Only fetch if userName is empty
+                                        android.util.Log.d("DetailScreen", "⚠️ userName empty, fetching from Firestore for userId: ${currentItem.userId}")
+                                        val userRepo = com.campus.lostfound.data.repository.UserRepository()
+                                        val userProfileResult = userRepo.getUserProfile(currentItem.userId)
+                                        userProfileResult.getOrNull()?.name?.takeIf { it.isNotBlank() } ?: "Teman"
+                                    }
+                                    
+                                    android.util.Log.d("DetailScreen", "Final userName: '$userName'")
+                                    
                                     WhatsAppUtil.openWhatsAppWithImage(
                                         context = context,
                                         phoneNumber = currentItem.whatsappNumber,
                                         itemName = currentItem.itemName,
                                         type = if (currentItem.type == ItemType.LOST) "barang hilang" else "barang ditemukan",
                                         imageUrl = currentItem.imageUrl,
-                                        location = currentItem.location
+                                        location = currentItem.location,
+                                        userName = userName
                                     )
                                 }
                             }
@@ -382,8 +397,13 @@ fun DetailScreen(
                         }
                     }
 
-                    // Reporter Info Card
-                    if (!item!!.userName.isNullOrEmpty() && !item!!.userId.isNullOrEmpty()) {
+                    // Reporter Info Card - ✅ Always shows latest name from cache/server
+                    if (!item!!.userId.isNullOrEmpty()) {
+                        // Use currentUserName (real-time fetched) with fallback to historical userName
+                        val displayName = currentUserName?.takeIf { it.isNotBlank() } 
+                            ?: item!!.userName?.takeIf { it.isNotBlank() } 
+                            ?: "Loading..."
+                        
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceVariant,
                             shape = RoundedCornerShape(12.dp),
@@ -402,7 +422,7 @@ fun DetailScreen(
                             ) {
                                 SmallUserAvatar(
                                     photoUrl = item!!.userPhotoUrl,
-                                    name = currentUserName ?: item!!.userName ?: ""
+                                    name = displayName
                                 )
                                 Column(
                                     modifier = Modifier.weight(1f)
@@ -413,7 +433,7 @@ fun DetailScreen(
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
-                                        text = currentUserName ?: item!!.userName ?: "Memuat...",
+                                        text = displayName,
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Medium,
                                         maxLines = 2,

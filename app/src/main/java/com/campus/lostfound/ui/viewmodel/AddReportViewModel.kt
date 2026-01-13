@@ -182,6 +182,14 @@ class AddReportViewModel(
             val userPhotoUrl = userProfile?.photoUrl 
                 ?: auth.currentUser?.photoUrl?.toString() 
                 ?: ""
+            
+            // Debug logging - DETAIL
+            Log.d("AddReportViewModel", "═══════════════════════════════")
+            Log.d("AddReportViewModel", "📝 Creating report with userName: '$userName'")
+            Log.d("AddReportViewModel", "   └─ userProfile?.name: '${userProfile?.name}'")
+            Log.d("AddReportViewModel", "   └─ auth.displayName: '${auth.currentUser?.displayName}'")
+            Log.d("AddReportViewModel", "   └─ userId: $currentUserId")
+            Log.d("AddReportViewModel", "═══════════════════════════════")
 
             val item = LostFoundItem(
                 userId = currentUserId,
@@ -195,7 +203,7 @@ class AddReportViewModel(
                 whatsappNumber = formattedNumber
             )
 
-            Log.d("AddReportViewModel", "Submitting report. Current auth uid=${FirebaseAuth.getInstance().currentUser?.uid}")
+            Log.d("AddReportViewModel", "Submitting report to Firestore with userName='$userName'...")
             val result = try {
                 repository.addItem(item, compressedUri)
             } catch (ex: Exception) {

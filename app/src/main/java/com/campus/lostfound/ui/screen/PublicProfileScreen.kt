@@ -39,10 +39,20 @@ fun PublicProfileScreen(
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     
-    // Load user profile
+    // ✅ INSTANT LOAD: Check cache first for immediate display
     LaunchedEffect(userId) {
         scope.launch {
-            isLoading = true
+            // Try cache first (instant)
+            val cachedUser = com.campus.lostfound.util.UserCache.getUserById(userId)
+            if (cachedUser != null) {
+                userProfile = cachedUser
+                isLoading = false
+                android.util.Log.d("PublicProfileScreen", "✅ Loaded from cache: '${cachedUser.name}'")
+            }
+        }
+        
+        // Then fetch from Firestore (always refresh for accuracy)
+        scope.launch {
             error = null
             
             val result = userRepository.getUserProfile(userId)
@@ -54,10 +64,12 @@ fun PublicProfileScreen(
                         stats = it
                     }
                     isLoading = false
+                    android.util.Log.d("PublicProfileScreen", "✅ Loaded profile: '${user.name}'")
                 },
                 onFailure = { e ->
                     error = e.message
                     isLoading = false
+                    android.util.Log.e("PublicProfileScreen", "❌ Failed to load profile: ${e.message}")
                 }
             )
         }

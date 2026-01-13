@@ -69,18 +69,27 @@ class ActivityViewModel(
     
     fun deleteReport(item: LostFoundItem, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
+            // ✅ OPTIMISTIC UPDATE: Remove from UI immediately for instant feedback
+            val currentReports = _myReports.value
+            _myReports.value = currentReports.filter { it.id != item.id }
+            android.util.Log.d("ActivityViewModel", "✅ Optimistic delete: Removed ${item.itemName} from UI")
             
+            // Call success callback immediately for instant UI response
+            onSuccess()
+            
+            // Then delete from Firestore in background
             val result = repository.deleteItem(item.id, item.imageStoragePath)
             
             result.fold(
                 onSuccess = {
-                    _isLoading.value = false
-                    onSuccess()
+                    android.util.Log.d("ActivityViewModel", "✅ Successfully deleted from Firestore: ${item.itemName}")
+                    // Reload to ensure consistency
+                    loadMyReports()
                 },
                 onFailure = { error ->
-                    _isLoading.value = false
+                    android.util.Log.e("ActivityViewModel", "❌ Failed to delete from Firestore: ${error.message}")
+                    // ✅ ROLLBACK: Restore item if delete failed
+                    _myReports.value = currentReports
                     _errorMessage.value = error.message ?: "Gagal menghapus laporan"
                 }
             )
@@ -92,16 +101,25 @@ class ActivityViewModel(
      */
     fun deleteFromHistory(itemId: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
+            // ✅ OPTIMISTIC UPDATE: Remove from UI immediately
+            val currentHistory = _historyWithDate.value
+            _historyWithDate.value = currentHistory.filter { it.item.id != itemId }
+            _history.value = _historyWithDate.value.map { it.item }
+            android.util.Log.d("ActivityViewModel", "✅ Optimistic delete from history: $itemId")
             
+            // Call success immediately
+            onSuccess()
+            
+            // Delete from local storage in background
             val success = repository.deleteFromLocalHistory(itemId)
             
             if (success) {
-                _isLoading.value = false
-                onSuccess()
+                android.util.Log.d("ActivityViewModel", "✅ Successfully deleted from local history")
             } else {
-                _isLoading.value = false
+                android.util.Log.e("ActivityViewModel", "❌ Failed to delete from local history")
+                // ✅ ROLLBACK: Restore if failed
+                _historyWithDate.value = currentHistory
+                _history.value = currentHistory.map { it.item }
                 _errorMessage.value = "Gagal menghapus riwayat"
             }
         }

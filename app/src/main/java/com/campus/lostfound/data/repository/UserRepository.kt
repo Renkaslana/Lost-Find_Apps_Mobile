@@ -42,20 +42,36 @@ class UserRepository {
     
     // Get user profile by ID (untuk public profile)
     suspend fun getUserProfile(userId: String): Result<User> {
+        // ✅ Check cache first for instant load
+        UserCache.getUserById(userId)?.let {
+            android.util.Log.d("UserRepository", "✅ Cache HIT for userId: $userId, name: '${it.name}'")
+            return Result.success(it)
+        }
+        
+        android.util.Log.d("UserRepository", "⚠️ Cache MISS for userId: $userId, fetching from Firestore...")
+        
         return try {
             val snapshot = usersCollection.document(userId).get().await()
+            
+            android.util.Log.d("UserRepository", "Firestore response - exists: ${snapshot.exists()}, data: ${snapshot.data}")
             
             if (snapshot.exists()) {
                 val user = snapshot.toObject(User::class.java)
                 if (user != null) {
+                    android.util.Log.d("UserRepository", "✅ User found - id: ${user.id}, name: '${user.name}', email: ${user.email}")
+                    // ✅ Cache for future use
+                    UserCache.setUserById(userId, user)
                     Result.success(user)
                 } else {
+                    android.util.Log.e("UserRepository", "❌ Failed to parse user data")
                     Result.failure(Exception("Failed to parse user data"))
                 }
             } else {
+                android.util.Log.e("UserRepository", "❌ User document NOT FOUND for userId: $userId")
                 Result.failure(Exception("User not found"))
             }
         } catch (e: Exception) {
+            android.util.Log.e("UserRepository", "❌ Exception fetching user: ${e.message}", e)
             Result.failure(e)
         }
     }

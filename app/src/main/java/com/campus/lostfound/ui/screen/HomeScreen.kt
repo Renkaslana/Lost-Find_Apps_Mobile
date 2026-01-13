@@ -71,6 +71,7 @@ import com.campus.lostfound.util.WhatsAppUtil
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import kotlinx.coroutines.launch
 
 // Quick Stats Card Component
 @Composable
@@ -239,6 +240,7 @@ fun HomeScreen(
     onNavigateToDetail: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val viewModel: HomeViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -266,6 +268,7 @@ private fun HomeScreenContent(
     onNavigateToNotifications: () -> Unit,
     onNavigateToDetail: ((String) -> Unit)? = null
 ) {
+    val scope = rememberCoroutineScope()
     val items by viewModel.filteredItems.collectAsStateWithLifecycle()
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedFilter by viewModel.selectedFilter.collectAsStateWithLifecycle()
@@ -507,12 +510,30 @@ private fun HomeScreenContent(
                         ItemCard(
                             item = item,
                             onContactClick = {
-                                WhatsAppUtil.openWhatsApp(
-                                    context = context,
-                                    phoneNumber = item.whatsappNumber,
-                                    itemName = item.itemName,
-                                    type = if (item.type == ItemType.LOST) "barang hilang" else "barang ditemukan"
-                                )
+                                // ✅ Langsung pakai userName dari item jika sudah ada
+                                scope.launch {
+                                    val userName = if (item.userName.isNotBlank()) {
+                                        android.util.Log.d("HomeScreen", "✅ Using existing userName: '${item.userName}'")
+                                        item.userName
+                                    } else {
+                                        // Only fetch if userName is empty
+                                        android.util.Log.d("HomeScreen", "⚠️ userName empty, fetching from Firestore for userId: ${item.userId}")
+                                        val userRepo = com.campus.lostfound.data.repository.UserRepository()
+                                        val userProfileResult = userRepo.getUserProfile(item.userId)
+                                        userProfileResult.getOrNull()?.name?.takeIf { it.isNotBlank() } ?: "Teman"
+                                    }
+                                    
+                                    android.util.Log.d("HomeScreen", "Final userName: '$userName'")
+                                    
+                                    WhatsAppUtil.openWhatsApp(
+                                        context = context,
+                                        phoneNumber = item.whatsappNumber,
+                                        itemName = item.itemName,
+                                        type = if (item.type == ItemType.LOST) "barang hilang" else "barang ditemukan",
+                                        userName = userName,
+                                        location = item.location
+                                    )
+                                }
                             },
                             onCardClick = {
                                 onNavigateToDetail?.invoke(item.id)

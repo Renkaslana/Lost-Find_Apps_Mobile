@@ -441,7 +441,7 @@ private fun SinglePageFormContent(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.ErrorOutline, null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Barang Hilang")
+                                Text("Hilang")
                             }
                         },
                         modifier = Modifier.weight(1f)
@@ -453,7 +453,7 @@ private fun SinglePageFormContent(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Barang Ditemukan")
+                                Text("Ditemukan")
                             }
                         },
                         modifier = Modifier.weight(1f)

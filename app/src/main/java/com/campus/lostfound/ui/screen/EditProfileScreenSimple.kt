@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.campus.lostfound.data.repository.UserRepository
 import com.campus.lostfound.ui.components.LargeUserAvatar
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -26,6 +27,8 @@ fun EditProfileScreenSimple(
     onNavigateBack: () -> Unit
 ) {
     val userRepository = remember { UserRepository() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val settingsRepository = remember { com.campus.lostfound.data.SettingsRepository(context) }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     
@@ -43,10 +46,22 @@ fun EditProfileScreenSimple(
     
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // Load current profile
+    // ✅ INSTANT LOAD from cache, then refresh from server
     LaunchedEffect(Unit) {
+        // Load from persistent cache first (name only, instant)
         scope.launch {
-            userRepository.getCurrentUserProfile().onSuccess { user ->
+            val cachedName = settingsRepository.cachedUserNameFlow.first()
+            if (cachedName.isNotBlank()) {
+                name = cachedName
+                isLoading = false
+                android.util.Log.d("EditProfileScreen", "✅ Loaded name from persistent cache: '$cachedName'")
+            }
+        }
+        
+        // Then fetch full profile from Firestore (with UserCache check)
+        scope.launch {
+            val result = userRepository.getCurrentUserProfile()
+            result.onSuccess { user ->
                 name = user.name
                 nim = user.nim
                 faculty = user.faculty
@@ -56,6 +71,10 @@ fun EditProfileScreenSimple(
                 showPhonePublicly = user.showPhonePublicly
                 showEmailPublicly = user.showEmailPublicly
                 isLoading = false
+                android.util.Log.d("EditProfileScreen", "✅ Loaded full profile from server: '${user.name}'")
+            }.onFailure { error ->
+                isLoading = false
+                android.util.Log.e("EditProfileScreen", "❌ Failed to load profile: ${error.message}")
             }
         }
     }
@@ -288,6 +307,19 @@ fun EditProfileScreenSimple(
                                 showEmailPublicly = showEmailPublicly
                             ).fold(
                                 onSuccess = {
+                                    // ✅ Update cache after successful save
+                                    scope.launch {
+                                        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                                        currentUser?.uid?.let { userId ->
+                                            settingsRepository.cacheUserProfile(
+                                                userId = userId,
+                                                name = name,
+                                                email = currentUser.email ?: "",
+                                                photoUrl = photoUrl
+                                            )
+                                            android.util.Log.d("EditProfileScreen", "✅ Cache updated with new name: '$name'")
+                                        }
+                                    }
                                     isSaving = false
                                     snackbarHostState.showSnackbar("Profile updated successfully!")
                                     onNavigateBack()

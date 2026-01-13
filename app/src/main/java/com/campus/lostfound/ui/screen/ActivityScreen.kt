@@ -32,6 +32,7 @@ import com.campus.lostfound.data.model.LostFoundItem
 import com.campus.lostfound.ui.viewmodel.ActivityViewModel
 import com.campus.lostfound.ui.components.ItemCard
 import com.campus.lostfound.util.rememberImagePicker
+import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -266,6 +267,8 @@ private fun ActiveReportCard(
     onDelete: () -> Unit,
     onNavigateToDetail: ((String) -> Unit)? = null
 ) {
+    val scope = rememberCoroutineScope()
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -282,12 +285,30 @@ private fun ActiveReportCard(
             ItemCard(
                 item = item,
                 onContactClick = {
-                    com.campus.lostfound.util.WhatsAppUtil.openWhatsApp(
-                        context = context,
-                        phoneNumber = item.whatsappNumber,
-                        itemName = item.itemName,
-                        type = if (item.type == com.campus.lostfound.data.model.ItemType.LOST) "barang hilang" else "barang ditemukan"
-                    )
+                    scope.launch {
+                        // ✅ Langsung pakai userName dari item jika sudah ada
+                        val userName = if (item.userName.isNotBlank()) {
+                            android.util.Log.d("ActivityScreen", "✅ Using existing userName: '${item.userName}'")
+                            item.userName
+                        } else {
+                            // Only fetch if userName is empty
+                            android.util.Log.d("ActivityScreen", "⚠️ userName empty, fetching from Firestore for userId: ${item.userId}")
+                            val userRepo = com.campus.lostfound.data.repository.UserRepository()
+                            val userProfileResult = userRepo.getUserProfile(item.userId)
+                            userProfileResult.getOrNull()?.name?.takeIf { it.isNotBlank() } ?: "Teman"
+                        }
+                        
+                        android.util.Log.d("ActivityScreen", "Final userName: '$userName'")
+                        
+                        com.campus.lostfound.util.WhatsAppUtil.openWhatsApp(
+                            context = context,
+                            phoneNumber = item.whatsappNumber,
+                            itemName = item.itemName,
+                            type = if (item.type == com.campus.lostfound.data.model.ItemType.LOST) "barang hilang" else "barang ditemukan",
+                            userName = userName,
+                            location = item.location
+                        )
+                    }
                 },
                 onCardClick = {
                     onNavigateToDetail?.invoke(item.id)
